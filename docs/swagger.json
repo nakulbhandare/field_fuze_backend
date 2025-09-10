@@ -18,7 +18,7 @@
     "host": "localhost:8081",
     "basePath": "/api/v1",
     "paths": {
-        "/auth/register": {
+        "/auth/user/register": {
             "post": {
                 "description": "Create a new user account",
                 "consumes": [
@@ -70,7 +70,7 @@
                 }
             }
         },
-        "/auth/token": {
+        "/auth/user/token": {
             "post": {
                 "description": "Generate or refresh JWT token",
                 "consumes": [
@@ -109,6 +109,56 @@
                     },
                     "500": {
                         "description": "Internal Server Error - Token generation failed",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/user/{id}": {
+            "get": {
+                "description": "Retrieve user details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Get user details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User details retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid user ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - User does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve user",
                         "schema": {
                             "$ref": "#/definitions/models.APIResponse"
                         }

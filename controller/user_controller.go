@@ -29,7 +29,7 @@ func NewUserController(ctx context.Context, userRepo *repository.UserRepository,
 	}
 }
 
-// Register handles POST /api/v1/auth/register
+// Register handles POST /api/v1/auth/user/register
 // @Summary Register a new user
 // @Description Create a new user account
 // @Tags Authentication
@@ -40,7 +40,7 @@ func NewUserController(ctx context.Context, userRepo *repository.UserRepository,
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid registration data"
 // @Failure 409 {object} models.APIResponse "Conflict - User already exists"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Registration failed"
-// @Router /auth/register [post]
+// @Router /auth/user/register [post]
 func (h *UserController) Register(c *gin.Context) {
 	var req models.User
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -80,17 +80,55 @@ func (h *UserController) Register(c *gin.Context) {
 	})
 }
 
-// GenerateToken handles POST /api/v1/auth/token
+// GetUser handles GET /api/v1/auth/user
+// @Summary Get user details
+// @Description Retrieve user details by ID
+// @Tags User Management
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} models.APIResponse "User details retrieved successfully"
+// @Failure 400 {object} models.APIResponse "Bad Request - Invalid user ID"
+// @Failure 404 {object} models.APIResponse "Not Found - User does not exist"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to retrieve user"
+// @Router /auth/user/{id} [get]
+func (h *UserController) GetUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	user, err := h.userRepo.GetUser(userID)
+	if err != nil {
+		h.logger.Error("Failed to get user by ID", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get user by ID",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "User details retrieved successfully",
+		Data:    user,
+	})
+}
+
+// GenerateToken handles POST /api/v1/auth/user/token
 // @Summary Generate JWT token
 // @Description Generate or refresh JWT token
-// @Tags Token Management
+// @Tags Authentication
 // @Accept json
 // @Produce json
 // @Param request body models.RegisterUser true "Token generation request"
 // @Success 200 {object} models.APIResponse "Token generated successfully"
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid token request"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Token generation failed"
-// @Router /auth/token [POST]
+// @Router /auth/user/token [POST]
 func (h *UserController) GenerateToken(c *gin.Context) {
 	var req models.User
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -122,7 +160,7 @@ func (h *UserController) GenerateToken(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.GetByEmail(email)
+	user, err := h.userRepo.GetUser(email)
 	if err != nil {
 		h.logger.Error("Failed to get user by email", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{

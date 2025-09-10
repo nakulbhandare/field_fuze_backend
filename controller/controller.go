@@ -60,9 +60,11 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 		c.File("./docs/swagger.json")
 	})
 
+	user := v1.Group("/user")
 	// User routes
-	v1.POST("/register", c.User.Register)
-	v1.POST("/token", c.User.GenerateToken)
+	user.POST("/register", c.User.Register)
+	user.GET("/:id", c.User.GetUser)
+	user.POST("/token", c.User.GenerateToken)
 
 	// Create HTTP server
 	srv := &http.Server{
