@@ -26,7 +26,7 @@ type User struct {
 	ID                       string                 `json:"id" dynamodbav:"id"`
 	Email                    string                 `json:"email" dynamodbav:"email"`
 	Username                 string                 `json:"username" dynamodbav:"username"`
-	PasswordHash             string                 `json:"-" dynamodbav:"password_hash"`
+	Password                 string                 `json:"-" dynamodbav:"password"`
 	FirstName                string                 `json:"first_name" dynamodbav:"first_name"`
 	LastName                 string                 `json:"last_name" dynamodbav:"last_name"`
 	Phone                    *string                `json:"phone,omitempty" dynamodbav:"phone,omitempty"`

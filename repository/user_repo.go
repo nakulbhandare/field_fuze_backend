@@ -48,6 +48,13 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 	user.UpdatedAt = now
 	user.ID = utils.GenerateUUID()
 	user.Status = "active"
+	// Hash password
+	hashedPassword, err := utils.HashPassword(user.Password)
+	if err != nil {
+		r.logger.Errorf("Failed to hash password: %v", err)
+		return nil, err
+	}
+	user.Password = hashedPassword
 
 	// Save to database
 	err = r.db.PutItem(ctx, r.config.DynamoDBTablePrefix+"_users", user)
@@ -58,4 +65,27 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 
 	r.logger.Infof("User created successfully: %s", user.ID)
 	return user, nil
+}
+
+// GetByEmail retrieves a user by email
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+	user := models.User{}
+	config := models.QueryConfig{
+		TableName: r.config.DynamoDBTablePrefix + "_users",
+		IndexName: "email-index",
+		KeyName:   "email",
+		KeyValue:  email,
+		KeyType:   models.StringType,
+	}
+	fmt.Println(r.config.DynamoDBTablePrefix, "email :: ", email)
+	err := r.db.GetItem(context.Background(), config, &user)
+	if err != nil {
+		r.logger.Errorf("Failed to get user by email: %v", err)
+		return nil, err
+	}
+	fmt.Println("Users found:", utils.PrintPrettyJSON(user))
+	if user.ID == "" {
+		return nil, errors.New("user not found")
+	}
+	return &user, nil
 }

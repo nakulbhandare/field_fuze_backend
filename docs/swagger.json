@@ -38,7 +38,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/models.RegisterUser"
                         }
                     }
                 ],
@@ -63,6 +63,52 @@
                     },
                     "500": {
                         "description": "Internal Server Error - Registration failed",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/token": {
+            "post": {
+                "description": "Generate or refresh JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Token Management"
+                ],
+                "summary": "Generate JWT token",
+                "parameters": [
+                    {
+                        "description": "Token generation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RegisterUser"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token generated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid token request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Token generation failed",
                         "schema": {
                             "$ref": "#/definitions/models.APIResponse"
                         }
@@ -117,84 +163,47 @@
                 }
             }
         },
-        "models.User": {
+        "models.RegisterUser": {
+            "description": "User registration request with account details",
             "type": "object",
+            "required": [
+                "email",
+                "first_name",
+                "last_name",
+                "password",
+                "username"
+            ],
             "properties": {
-                "account_locked_until": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
+                "company_name": {
+                    "type": "string",
+                    "example": "Acme Corp"
                 },
                 "email": {
-                    "type": "string"
-                },
-                "email_verified": {
-                    "type": "boolean"
-                },
-                "failed_login_attempts": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "user@example.com"
                 },
                 "first_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "last_login_at": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "John"
                 },
                 "last_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "securePassword123"
                 },
                 "phone": {
-                    "type": "string"
-                },
-                "preferences": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "role": {
-                    "$ref": "#/definitions/models.UserRole"
-                },
-                "status": {
-                    "$ref": "#/definitions/models.UserStatus"
-                },
-                "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "+1234567890"
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "john_doe"
                 }
             }
-        },
-        "models.UserRole": {
-            "type": "string",
-            "enum": [
-                "user",
-                "admin",
-                "moderator"
-            ],
-            "x-enum-varnames": [
-                "UserRoleUser",
-                "UserRoleAdmin",
-                "UserRoleModerator"
-            ]
-        },
-        "models.UserStatus": {
-            "type": "string",
-            "enum": [
-                "active",
-                "inactive",
-                "suspended",
-                "pending_verification"
-            ],
-            "x-enum-varnames": [
-                "UserStatusActive",
-                "UserStatusInactive",
-                "UserStatusSuspended",
-                "UserStatusPendingVerification"
-            ]
         }
     },
     "securityDefinitions": {

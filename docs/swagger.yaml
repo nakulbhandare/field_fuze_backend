@@ -30,62 +30,38 @@ definitions:
         description: '"success" or "error"'
         type: string
     type: object
-  models.User:
+  models.RegisterUser:
+    description: User registration request with account details
     properties:
-      account_locked_until:
-        type: string
-      created_at:
+      company_name:
+        example: Acme Corp
         type: string
       email:
+        example: user@example.com
         type: string
-      email_verified:
-        type: boolean
-      failed_login_attempts:
-        type: integer
       first_name:
-        type: string
-      id:
-        type: string
-      last_login_at:
+        example: John
         type: string
       last_name:
+        example: Doe
+        type: string
+      password:
+        example: securePassword123
+        minLength: 8
         type: string
       phone:
-        type: string
-      preferences:
-        additionalProperties: true
-        type: object
-      role:
-        $ref: '#/definitions/models.UserRole'
-      status:
-        $ref: '#/definitions/models.UserStatus'
-      updated_at:
+        example: "+1234567890"
         type: string
       username:
+        example: john_doe
         type: string
+    required:
+    - email
+    - first_name
+    - last_name
+    - password
+    - username
     type: object
-  models.UserRole:
-    enum:
-    - user
-    - admin
-    - moderator
-    type: string
-    x-enum-varnames:
-    - UserRoleUser
-    - UserRoleAdmin
-    - UserRoleModerator
-  models.UserStatus:
-    enum:
-    - active
-    - inactive
-    - suspended
-    - pending_verification
-    type: string
-    x-enum-varnames:
-    - UserStatusActive
-    - UserStatusInactive
-    - UserStatusSuspended
-    - UserStatusPendingVerification
 host: localhost:8081
 info:
   contact:
@@ -122,7 +98,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/models.RegisterUser'
       produces:
       - application/json
       responses:
@@ -145,6 +121,36 @@ paths:
       summary: Register a new user
       tags:
       - Authentication
+  /auth/token:
+    post:
+      consumes:
+      - application/json
+      description: Generate or refresh JWT token
+      parameters:
+      - description: Token generation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterUser'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token generated successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid token request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Token generation failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Generate JWT token
+      tags:
+      - Token Management
 securityDefinitions:
   BearerAuth:
     description: JWT Authorization header using the Bearer scheme. Enter 'Bearer'

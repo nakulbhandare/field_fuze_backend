@@ -62,6 +62,7 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 
 	// User routes
 	v1.POST("/register", c.User.Register)
+	v1.POST("/token", c.User.GenerateToken)
 
 	// Create HTTP server
 	srv := &http.Server{

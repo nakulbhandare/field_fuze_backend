@@ -2,7 +2,9 @@ package dal
 
 import (
 	"context"
+	"encoding/base64"
 	"fieldfuze-backend/models"
+	"fieldfuze-backend/utils"
 	"fmt"
 
 	"fieldfuze-backend/utils/logger"
@@ -61,26 +63,100 @@ func NewDynamoDBClient(cfg *models.Config, log logger.Logger) (*DynamoDBClient, 
 	return dbClient, nil
 }
 
-// GetItem retrieves an item from DynamoDB
-func (db *DynamoDBClient) GetItem(ctx context.Context, tableName, key, value string, result interface{}) error {
+// GetItem - Universal method for any table, any primary key or secondary index
+func (db *DynamoDBClient) GetItem(ctx context.Context, config models.QueryConfig, result interface{}) error {
+	// If IndexName is provided, use Query for secondary index
+	if config.IndexName != "" {
+		return db.getSingleItemByIndex(ctx, config, result)
+	}
+
+	// Otherwise, use GetItem for primary key
+	return db.getSingleItemByPrimaryKey(ctx, config, result)
+}
+
+// getSingleItemByPrimaryKey retrieves item by primary key
+func (db *DynamoDBClient) getSingleItemByPrimaryKey(ctx context.Context, config models.QueryConfig, result interface{}) error {
+	key := map[string]types.AttributeValue{
+		config.KeyName: db.buildAttributeValue(config.KeyValue, config.KeyType),
+	}
+
 	input := &dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
-		Key: map[string]types.AttributeValue{
-			key: &types.AttributeValueMemberS{Value: value},
-		},
+		TableName: aws.String(config.TableName),
+		Key:       key,
 	}
 
 	output, err := db.client.GetItem(ctx, input)
 	if err != nil {
-		db.logger.Errorf("Failed to get item: %v", err)
+		db.logger.Errorf("Failed to get item from %s by %s=%s: %v",
+			config.TableName, config.KeyName, config.KeyValue, err)
 		return err
 	}
 
+	db.logger.Infof("DynamoDB GetItem output: %s", utils.PrintPrettyJSON(output))
+
 	if output.Item == nil {
-		return nil
+		return fmt.Errorf("item not found in %s with %s=%s",
+			config.TableName, config.KeyName, config.KeyValue)
 	}
 
-	return attributevalue.UnmarshalMap(output.Item, result)
+	if err := attributevalue.UnmarshalMap(output.Item, result); err != nil {
+		db.logger.Errorf("Failed to unmarshal item: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// getSingleItemByIndex retrieves item by secondary index
+func (db *DynamoDBClient) getSingleItemByIndex(ctx context.Context, config models.QueryConfig, result interface{}) error {
+	input := &dynamodb.QueryInput{
+		TableName:              aws.String(config.TableName),
+		IndexName:              aws.String(config.IndexName),
+		Limit:                  aws.Int32(1), // Only get one item
+		KeyConditionExpression: aws.String("#kn0 = :kv0"),
+		ExpressionAttributeNames: map[string]string{
+			"#kn0": config.KeyName,
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":kv0": db.buildAttributeValue(config.KeyValue, config.KeyType),
+		},
+	}
+
+	output, err := db.client.Query(ctx, input)
+	if err != nil {
+		db.logger.Errorf("Failed to query item from %s by %s=%s using index %s: %v",
+			config.TableName, config.KeyName, config.KeyValue, config.IndexName, err)
+		return err
+	}
+
+	db.logger.Infof("DynamoDB Query output: %s", utils.PrintPrettyJSON(output))
+
+	if len(output.Items) == 0 {
+		return fmt.Errorf("item not found in %s with %s=%s using index %s",
+			config.TableName, config.KeyName, config.KeyValue, config.IndexName)
+	}
+
+	// Unmarshal the first item
+	if err := attributevalue.UnmarshalMap(output.Items[0], result); err != nil {
+		db.logger.Errorf("Failed to unmarshal item: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// Helper method to build attribute values based on type
+func (db *DynamoDBClient) buildAttributeValue(value string, attrType models.AttributeType) types.AttributeValue {
+	switch attrType {
+	case models.NumberType:
+		return &types.AttributeValueMemberN{Value: value}
+	case models.BinaryType:
+		// Assuming value is base64 encoded
+		data, _ := base64.StdEncoding.DecodeString(value)
+		return &types.AttributeValueMemberB{Value: data}
+	default: // StringType
+		return &types.AttributeValueMemberS{Value: value}
+	}
 }
 
 // PutItem stores an item in DynamoDB
