@@ -72,32 +72,32 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 // GetUser retrieves users by ID, email, username, or returns all users if key is empty
 func (r *UserRepository) GetUser(key string) ([]*models.User, error) {
 	ctx := context.Background()
-	
+
 	// If key is empty, return all users
 	if key == "" {
 		var users []*models.User
 		tableName := r.config.DynamoDBTablePrefix + "_users"
-		
+
 		fmt.Printf("Scanning %s table for all users\n", tableName)
-		
+
 		err := r.db.ScanTable(ctx, tableName, &users)
 		if err != nil {
 			r.logger.Errorf("Failed to scan users table: %v", err)
 			return nil, fmt.Errorf("failed to get all users: %w", err)
 		}
-		
+
 		fmt.Printf("Found %d users\n", len(users))
 		return users, nil
 	}
-	
+
 	// Single user lookup
 	user := models.User{}
-	
+
 	// Determine the key type and set up query config accordingly
 	keyType, indexName, keyName := r.determineKeyType(key)
-	
+
 	var config models.QueryConfig
-	
+
 	if keyType == "id" {
 		// For ID, use direct GetItem without index
 		config = models.QueryConfig{
@@ -116,19 +116,19 @@ func (r *UserRepository) GetUser(key string) ([]*models.User, error) {
 			KeyType:   models.StringType,
 		}
 	}
-	
+
 	fmt.Printf("Querying %s table with %s: %s\n", r.config.DynamoDBTablePrefix, keyName, key)
-	
+
 	err := r.db.GetItem(ctx, config, &user)
 	if err != nil {
 		r.logger.Errorf("Failed to get user by %s: %v", keyName, err)
 		return nil, fmt.Errorf("failed to get user by %s: %w", keyName, err)
 	}
-	
+
 	if user.ID == "" {
 		return nil, errors.New("user not found")
 	}
-	
+
 	fmt.Println("User found:", utils.PrintPrettyJSON(user))
 	return []*models.User{&user}, nil
 }
@@ -138,7 +138,7 @@ func (r *UserRepository) determineKeyType(key string) (keyType, indexName, keyNa
 	// UUID pattern for ID (format: 8-4-4-4-12 characters)
 	uuidPattern := `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
 	isUUID, _ := regexp.MatchString(uuidPattern, strings.ToLower(key))
-	
+
 	if isUUID {
 		return "id", "", "id"
 	} else if strings.Contains(key, "@") {
@@ -148,4 +148,93 @@ func (r *UserRepository) determineKeyType(key string) (keyType, indexName, keyNa
 		// Assume it's a username
 		return "username", "username-index", "username"
 	}
+}
+
+func (r *UserRepository) UpdateUser(id string, user *models.User) (*models.User, error) {
+	ctx := context.Background()
+
+	// Fetch existing user using the same logic as GetUser
+	existingUser := models.User{}
+	
+	// Determine the key type and set up query config accordingly
+	keyType, indexName, keyName := r.determineKeyType(id)
+
+	var config models.QueryConfig
+
+	if keyType == "id" {
+		// For ID, use direct GetItem without index
+		config = models.QueryConfig{
+			TableName: r.config.DynamoDBTablePrefix + "_users",
+			KeyName:   "id",
+			KeyValue:  id,
+			KeyType:   models.StringType,
+		}
+	} else {
+		// For email/username, use secondary index
+		config = models.QueryConfig{
+			TableName: r.config.DynamoDBTablePrefix + "_users",
+			IndexName: indexName,
+			KeyName:   keyName,
+			KeyValue:  id,
+			KeyType:   models.StringType,
+		}
+	}
+
+	err := r.db.GetItem(ctx, config, &existingUser)
+	if err != nil {
+		r.logger.Errorf("Failed to get user by %s: %v", keyName, err)
+		return nil, fmt.Errorf("failed to get user by %s: %w", keyName, err)
+	}
+
+	if existingUser.ID == "" {
+		return nil, errors.New("user not found")
+	}
+
+	// Prepare update fields
+	updates := make(map[string]interface{})
+	
+	if user.FirstName != "" {
+		updates["first_name"] = user.FirstName
+	}
+	if user.LastName != "" {
+		updates["last_name"] = user.LastName
+	}
+	if user.Phone != nil {
+		updates["phone"] = user.Phone
+	}
+	if user.Status != "" {
+		updates["status"] = user.Status
+	}
+	if user.Role != "" {
+		updates["role"] = user.Role
+	}
+	updates["updated_at"] = time.Now()
+
+	// Save updates
+	err = r.db.UpdateItem(ctx, r.config.DynamoDBTablePrefix+"_users", "id", existingUser.ID, updates)
+	if err != nil {
+		r.logger.Errorf("Failed to update user: %v", err)
+		return nil, err
+	}
+
+	// Update the existing user object for return
+	if user.FirstName != "" {
+		existingUser.FirstName = user.FirstName
+	}
+	if user.LastName != "" {
+		existingUser.LastName = user.LastName
+	}
+	if user.Phone != nil {
+		existingUser.Phone = user.Phone
+	}
+	if user.Status != "" {
+		existingUser.Status = user.Status
+	}
+	if user.Role != "" {
+		existingUser.Role = user.Role
+	}
+	existingUser.UpdatedAt = time.Now()
+
+	r.logger.Infof("User updated successfully: %s", existingUser.ID)
+	return &existingUser, nil
 }

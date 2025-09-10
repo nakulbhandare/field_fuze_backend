@@ -223,6 +223,74 @@ func (h *UserController) GetUserList(c *gin.Context) {
 	})
 }
 
+// UpdateUser handles PATCH /api/v1/auth/user/update/{id}
+// @Summary Update user details
+// @Description Update user information by ID
+// @Tags User Management
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param request body models.User true "Update user request"
+// @Success 200 {object} models.APIResponse "User updated successfully"
+// @Failure 400 {object} models.APIResponse "Bad Request - Invalid user ID or data"
+// @Failure 404 {object} models.APIResponse "Not Found - User does not exist"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to update user"
+// @Router /auth/user/update/{id} [patch]
+func (h *UserController) UpdateUser(c *gin.Context) {
+	var req models.User
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to bind JSON:", err)
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	userID := c.Param("id")
+	if userID == "" {
+		h.logger.Error("Missing user ID")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Missing user ID",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: "User ID is required",
+			},
+		})
+		return
+	}
+
+	// Update user in the repository
+	updatedUser, err := h.userRepo.UpdateUser(userID, &req)
+	if err != nil {
+		h.logger.Error("Failed to update user", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to update user",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "User updated successfully",
+		Data:    updatedUser,
+	})
+}
+
 // GenerateToken handles POST /api/v1/auth/user/token
 // @Summary Generate JWT token
 // @Description Generate or refresh JWT token

@@ -62,6 +62,62 @@ definitions:
     - password
     - username
     type: object
+  models.User:
+    properties:
+      account_locked_until:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      failed_login_attempts:
+        type: integer
+      first_name:
+        type: string
+      id:
+        type: string
+      last_login_at:
+        type: string
+      last_name:
+        type: string
+      phone:
+        type: string
+      preferences:
+        additionalProperties: true
+        type: object
+      role:
+        $ref: '#/definitions/models.UserRole'
+      status:
+        $ref: '#/definitions/models.UserStatus'
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  models.UserRole:
+    enum:
+    - user
+    - admin
+    - moderator
+    type: string
+    x-enum-varnames:
+    - UserRoleUser
+    - UserRoleAdmin
+    - UserRoleModerator
+  models.UserStatus:
+    enum:
+    - active
+    - inactive
+    - suspended
+    - pending_verification
+    type: string
+    x-enum-varnames:
+    - UserStatusActive
+    - UserStatusInactive
+    - UserStatusSuspended
+    - UserStatusPendingVerification
 host: localhost:8081
 info:
   contact:
@@ -216,6 +272,45 @@ paths:
       summary: Generate JWT token
       tags:
       - Authentication
+  /auth/user/update/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update user information by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update user request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid user ID or data
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - User does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to update user
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Update user details
+      tags:
+      - User Management
 securityDefinitions:
   BearerAuth:
     description: JWT Authorization header using the Bearer scheme. Enter 'Bearer'

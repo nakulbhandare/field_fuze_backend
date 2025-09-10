@@ -65,6 +65,7 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	user.POST("/register", c.User.Register)
 	user.GET("/:id", c.User.GetUser)
 	user.GET("/list", c.User.GetUserList)
+	user.PATCH("/update/:id", c.User.UpdateUser)
 	user.POST("/token", c.User.GenerateToken)
 
 	// Create HTTP server
