@@ -1,0 +1,155 @@
+basePath: /api/v1
+definitions:
+  models.APIError:
+    properties:
+      details:
+        description: More context about the error
+        type: string
+      field:
+        description: For validation errors (which field failed)
+        type: string
+      type:
+        description: e.g., "ValidationError", "DatabaseError"
+        type: string
+    type: object
+  models.APIResponse:
+    properties:
+      code:
+        description: HTTP status code (200, 400, 500, etc.)
+        type: integer
+      data:
+        description: Any response data (can be map, struct, list, etc.)
+      error:
+        allOf:
+        - $ref: '#/definitions/models.APIError'
+        description: Detailed error info (nil if success)
+      message:
+        description: Human-readable message
+        type: string
+      status:
+        description: '"success" or "error"'
+        type: string
+    type: object
+  models.User:
+    properties:
+      account_locked_until:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      failed_login_attempts:
+        type: integer
+      first_name:
+        type: string
+      id:
+        type: string
+      last_login_at:
+        type: string
+      last_name:
+        type: string
+      phone:
+        type: string
+      preferences:
+        additionalProperties: true
+        type: object
+      role:
+        $ref: '#/definitions/models.UserRole'
+      status:
+        $ref: '#/definitions/models.UserStatus'
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  models.UserRole:
+    enum:
+    - user
+    - admin
+    - moderator
+    type: string
+    x-enum-varnames:
+    - UserRoleUser
+    - UserRoleAdmin
+    - UserRoleModerator
+  models.UserStatus:
+    enum:
+    - active
+    - inactive
+    - suspended
+    - pending_verification
+    type: string
+    x-enum-varnames:
+    - UserStatusActive
+    - UserStatusInactive
+    - UserStatusSuspended
+    - UserStatusPendingVerification
+host: localhost:8081
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: "FieldFuze Backend API with DynamoDB and Telnyx Integration\n\n## \U0001F525
+    AUTHENTICATION FLOW:\n### Step 1: Register Customer\n**POST /auth/register** -
+    Create customer account (no token generated)\n`{\"email\": \"user@example.com\",
+    \"username\": \"john\", \"password\": \"pass123\", \"first_name\": \"John\", \"last_name\":
+    \"Doe\"}`\n\n## \U0001F680 QUICK AUTHENTICATION:\n### Using the Authorize Button
+    (Recommended)\n1. Click the **\U0001F513 Authorize** button (top right of any
+    API section)\n2. In the authorization dialog, use the **Login** form:\n- Enter
+    your **Username** (email)\n- Enter your **Password**\n- Click **Login** button\n3.
+    Your Bearer token will be **automatically applied** to all API calls!\n4. All
+    protected endpoints will now work without manual token entry\n\n### Manual Token
+    Entry (Alternative)\nIf you prefer manual setup: Get token from `/auth/login`,
+    then paste `Bearer YOUR_TOKEN` in the Authorization field"
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: FieldFuze Backend API
+  version: "1.0"
+paths:
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account
+      parameters:
+      - description: Registration request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid registration data
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "409":
+          description: Conflict - User already exists
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Registration failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Register a new user
+      tags:
+      - Authentication
+securityDefinitions:
+  BearerAuth:
+    description: JWT Authorization header using the Bearer scheme. Enter 'Bearer'
+      [space] and then your token in the text input below.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

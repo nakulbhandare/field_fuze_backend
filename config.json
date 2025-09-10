@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "FieldFuze Backend",
+    "version": "1.0.0",
+    "env": "development",
+    "host": "0.0.0.0",
+    "port": "8081"
+  },
+  "jwt": {
+    "secret": "your-super-secret-jwt-key-change-this-in-production",
+    "expires_in": "24h"
+  },
+  "aws": {
+    "region": "us-east-1",
+    "access_key_id": "",
+    "secret_access_key": "",
+    "dynamodb_endpoint": "",
+    "dynamodb_table_prefix": "dev"
+  },
+  "telnyx": {
+    "api_key": "",
+    "app_id": "",
+    "public_key": ""
+  },
+  "logging": {
+    "level": "info",
+    "format": "json"
+  },
+  "cors": {
+    "origins": ["*"]
+  },
+  "rate_limit": {
+    "requests_per_minute": 100
+  },
+  "basePath": "/api/v1/auth"
+}
