@@ -6,6 +6,7 @@ import (
 	"fieldfuze-backend/repository"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"fieldfuze-backend/utils/logger"
@@ -95,7 +96,7 @@ func (h *UserController) Register(c *gin.Context) {
 func (h *UserController) GetUser(c *gin.Context) {
 	userID := c.Param("id")
 
-	user, err := h.userRepo.GetUser(userID)
+	users, err := h.userRepo.GetUser(userID)
 	if err != nil {
 		h.logger.Error("Failed to get user by ID", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -110,11 +111,115 @@ func (h *UserController) GetUser(c *gin.Context) {
 		return
 	}
 
+	if len(users) == 0 {
+		c.JSON(http.StatusNotFound, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusNotFound,
+			Message: "User not found",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, models.APIResponse{
 		Status:  "success",
 		Code:    http.StatusOK,
 		Message: "User details retrieved successfully",
-		Data:    user,
+		Data:    users[0],
+	})
+}
+
+// GetUserList handles GET /api/v1/auth/user/list
+// @Summary Get list of users
+// @Description Retrieve a list of all users
+// @Tags User Management
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number for pagination"
+// @Param limit query int false "Number of users per page"
+// @Param sort query string false "Sort order (e.g., 'asc' or 'desc')"
+// @Success 200 {object} models.APIResponse "User list retrieved successfully"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to retrieve user list"
+// @Router /auth/user/list [get]
+func (h *UserController) GetUserList(c *gin.Context) {
+	// Parse pagination parameters
+	page := 1
+	limit := 10
+	sort := "asc"
+
+	if pageParam := c.Query("page"); pageParam != "" {
+		if p, err := strconv.Atoi(pageParam); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	if limitParam := c.Query("limit"); limitParam != "" {
+		if l, err := strconv.Atoi(limitParam); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	if sortParam := c.Query("sort"); sortParam == "desc" {
+		sort = "desc"
+	}
+
+	// Get all users
+	allUsers, err := h.userRepo.GetUser("")
+	if err != nil {
+		h.logger.Error("Failed to get user list", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get user list",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	// Sort users by created_at
+	if sort == "desc" {
+		for i, j := 0, len(allUsers)-1; i < j; i, j = i+1, j-1 {
+			allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+		}
+	}
+
+	// Calculate pagination
+	total := len(allUsers)
+	totalPages := (total + limit - 1) / limit
+	offset := (page - 1) * limit
+
+	// Apply pagination
+	var paginatedUsers []*models.User
+	if offset < total {
+		end := offset + limit
+		if end > total {
+			end = total
+		}
+		paginatedUsers = allUsers[offset:end]
+	} else {
+		paginatedUsers = []*models.User{}
+	}
+
+	// Create response with pagination metadata
+	responseData := map[string]interface{}{
+		"users": paginatedUsers,
+		"pagination": map[string]interface{}{
+			"page":         page,
+			"limit":        limit,
+			"total":        total,
+			"total_pages":  totalPages,
+			"has_next":     page < totalPages,
+			"has_previous": page > 1,
+		},
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "User list retrieved successfully",
+		Data:    responseData,
 	})
 }
 
@@ -160,7 +265,7 @@ func (h *UserController) GenerateToken(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.GetUser(email)
+	users, err := h.userRepo.GetUser(email)
 	if err != nil {
 		h.logger.Error("Failed to get user by email", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -175,6 +280,21 @@ func (h *UserController) GenerateToken(c *gin.Context) {
 		return
 	}
 
+	if len(users) == 0 {
+		h.logger.Error("User not found")
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusUnauthorized,
+			Message: "Invalid email or password",
+			Error: &models.APIError{
+				Type:    "AuthenticationError",
+				Details: "Invalid email or password",
+			},
+		})
+		return
+	}
+
+	user := users[0]
 	if user.Password != req.Password {
 		h.logger.Error("Invalid password")
 		c.JSON(http.StatusUnauthorized, models.APIResponse{

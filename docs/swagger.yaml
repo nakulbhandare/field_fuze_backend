@@ -120,6 +120,38 @@ paths:
       summary: Get user details
       tags:
       - User Management
+  /auth/user/list:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of all users
+      parameters:
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of users per page
+        in: query
+        name: limit
+        type: integer
+      - description: Sort order (e.g., 'asc' or 'desc')
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User list retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve user list
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Get list of users
+      tags:
+      - User Management
   /auth/user/register:
     post:
       consumes:
@@ -183,7 +215,7 @@ paths:
             $ref: '#/definitions/models.APIResponse'
       summary: Generate JWT token
       tags:
-      - Token Management
+      - Authentication
 securityDefinitions:
   BearerAuth:
     description: JWT Authorization header using the Bearer scheme. Enter 'Bearer'

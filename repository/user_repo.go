@@ -69,10 +69,29 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 	return user, nil
 }
 
-// GetUser retrieves a user by ID, email, or username
-func (r *UserRepository) GetUser(key string) (*models.User, error) {
-	user := models.User{}
+// GetUser retrieves users by ID, email, username, or returns all users if key is empty
+func (r *UserRepository) GetUser(key string) ([]*models.User, error) {
 	ctx := context.Background()
+	
+	// If key is empty, return all users
+	if key == "" {
+		var users []*models.User
+		tableName := r.config.DynamoDBTablePrefix + "_users"
+		
+		fmt.Printf("Scanning %s table for all users\n", tableName)
+		
+		err := r.db.ScanTable(ctx, tableName, &users)
+		if err != nil {
+			r.logger.Errorf("Failed to scan users table: %v", err)
+			return nil, fmt.Errorf("failed to get all users: %w", err)
+		}
+		
+		fmt.Printf("Found %d users\n", len(users))
+		return users, nil
+	}
+	
+	// Single user lookup
+	user := models.User{}
 	
 	// Determine the key type and set up query config accordingly
 	keyType, indexName, keyName := r.determineKeyType(key)
@@ -111,7 +130,7 @@ func (r *UserRepository) GetUser(key string) (*models.User, error) {
 	}
 	
 	fmt.Println("User found:", utils.PrintPrettyJSON(user))
-	return &user, nil
+	return []*models.User{&user}, nil
 }
 
 // determineKeyType determines if the key is an ID, email, or username
