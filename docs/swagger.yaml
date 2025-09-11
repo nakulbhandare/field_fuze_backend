@@ -222,6 +222,8 @@ paths:
           description: Internal Server Error - Failed to retrieve user
           schema:
             $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
       summary: Get user details
       tags:
       - User Management
@@ -254,6 +256,8 @@ paths:
           description: Internal Server Error - Failed to retrieve user list
           schema:
             $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
       summary: Get list of users
       tags:
       - User Management
@@ -420,6 +424,8 @@ paths:
           description: Internal Server Error - Failed to update user
           schema:
             $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
       summary: Update user details
       tags:
       - User Management

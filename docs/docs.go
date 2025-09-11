@@ -26,6 +26,11 @@ const docTemplate = `{
     "paths": {
         "/auth/user/list": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieve a list of all users",
                 "consumes": [
                     "application/json"
@@ -271,6 +276,11 @@ const docTemplate = `{
         },
         "/auth/user/update/{id}": {
             "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Update user information by ID",
                 "consumes": [
                     "application/json"
@@ -376,6 +386,11 @@ const docTemplate = `{
         },
         "/auth/user/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieve user details by ID",
                 "consumes": [
                     "application/json"

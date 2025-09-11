@@ -1,14 +1,11 @@
 package controller
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fieldfuze-backend/middelware"
 	"fieldfuze-backend/models"
 	"fieldfuze-backend/repository"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -88,6 +85,7 @@ func (h *UserController) Register(c *gin.Context) {
 // @Summary Get user details
 // @Description Retrieve user details by ID
 // @Tags User Management
+// @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param id path string true "User ID"
@@ -135,6 +133,7 @@ func (h *UserController) GetUser(c *gin.Context) {
 // @Summary Get list of users
 // @Description Retrieve a list of all users
 // @Tags User Management
+// @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number for pagination"
@@ -230,6 +229,7 @@ func (h *UserController) GetUserList(c *gin.Context) {
 // @Summary Update user details
 // @Description Update user information by ID
 // @Tags User Management
+// @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param id path string true "User ID"
@@ -313,36 +313,8 @@ type LoginRequest struct {
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Login failed"
 // @Router /auth/user/login [post]
 func (h *UserController) Login(c *gin.Context) {
-	var req LoginRequest
-	fmt.Println("Login request received", c.Request.Body)
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Println("Error binding JSON:", err)
-		h.logger.Error("Invalid login request:", err)
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusBadRequest,
-			Message: "Invalid login request",
-			Error: &models.APIError{
-				Type:    "ValidationError",
-				Details: err.Error(),
-			},
-		})
-		return
-	}
-
-	// // Create user model for authentication
-	// userAuth := models.User{
-	// 	Email:    req.Email,
-	// 	Password: req.Password,
-	// }
-
-	// // Set user in context for JWT manager
-	// c.Set("login_request", userAuth)
-	b, _ := json.Marshal(req)                         // marshal back to JSON
-	c.Request.Body = io.NopCloser(bytes.NewReader(b)) // reset the body
-
-	// Delegate to JWT middleware for secure authentication
-	h.jwtManager.AuthenticateUser(c)
+	// This endpoint is handled entirely by the AuthMiddleware
+	// The middleware detects login requests and processes them automatically
 }
 
 // GenerateToken handles POST /api/v1/auth/user/token
@@ -359,8 +331,8 @@ func (h *UserController) Login(c *gin.Context) {
 // @Router /auth/user/token [POST]
 // //
 func (h *UserController) GenerateToken(c *gin.Context) {
-	// Delegate to JWT middleware which handles the complete authentication flow
-	h.jwtManager.AuthenticateUser(c)
+	// This endpoint is handled entirely by the AuthMiddleware
+	// The middleware detects login requests and processes them automatically
 }
 
 // Logout handles POST /api/v1/auth/user/logout

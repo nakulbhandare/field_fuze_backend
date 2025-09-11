@@ -78,143 +78,6 @@ func (j *JWTManager) GenerateToken(user *models.User) (string, error) {
 	return tokenString, nil
 }
 
-// AuthenticateUser handles user authentication and token generation
-func (j *JWTManager) AuthenticateUser(c *gin.Context) {
-	var req models.User
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Println("Error binding JSON: :: AuthenticateUser", err)
-		j.Logger.Error("Failed to bind JSON:", err)
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusBadRequest,
-			Message: "Invalid request",
-			Error: &models.APIError{
-				Type:    "ValidationError",
-				Details: err.Error(),
-			},
-		})
-		return
-	}
-
-	email, ok := req.Email, req.Email != ""
-	if !ok {
-		j.Logger.Error("Missing email or password")
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusBadRequest,
-			Message: "Missing email or password",
-			Error: &models.APIError{
-				Type:    "ValidationError",
-				Details: "Email and password are required",
-			},
-		})
-		return
-	}
-
-	users, err := j.UserRepo.GetUser(email)
-	if err != nil {
-		j.Logger.Error("Failed to get user by email", fmt.Errorf("error: %v", err))
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to get user by email",
-			Error: &models.APIError{
-				Type:    "DatabaseError",
-				Details: err.Error(),
-			},
-		})
-		return
-	}
-
-	if len(users) == 0 {
-		j.Logger.Error("User not found")
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusUnauthorized,
-			Message: "Invalid email or password",
-			Error: &models.APIError{
-				Type:    "AuthenticationError",
-				Details: "Invalid email or password",
-			},
-		})
-		return
-	}
-
-	user := users[0]
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		j.Logger.Error("Invalid password")
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusUnauthorized,
-			Message: "Invalid email or password",
-			Error: &models.APIError{
-				Type:    "AuthenticationError",
-				Details: "Invalid email or password",
-			},
-		})
-		return
-	}
-
-	// Ensure user has roles - if not, set default
-	if len(user.Roles) == 0 {
-		defaultRole := models.RoleAssignment{
-			RoleID:      "role-123",
-			RoleName:    "User",
-			Permissions: []string{"read", "write"},
-			Level:       1,
-			Context: map[string]string{
-				"project_id": "project-123",
-				"org_id":     "org-123",
-			},
-			AssignedAt: time.Now(),
-			ExpiresAt:  nil,
-		}
-		user.Roles = []models.RoleAssignment{defaultRole}
-	}
-
-	// Generate token
-	tokenString, err := j.GenerateToken(user)
-	if err != nil {
-		j.Logger.Error("Token generation failed", err)
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusInternalServerError,
-			Message: "Token generation failed",
-			Error: &models.APIError{
-				Type:    "TokenError",
-				Details: err.Error(),
-			},
-		})
-		return
-	}
-
-	// Parse token to extract token ID and set as active token
-	tempToken, _ := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(j.Config.JWTSecret), nil
-	})
-	if tempClaims, ok := tempToken.Claims.(*models.JWTClaims); ok {
-		j.SetActiveToken(user.ID, tempClaims.ID)
-	}
-
-	// Return token response
-	c.JSON(http.StatusOK, models.APIResponse{
-		Status:  "success",
-		Code:    http.StatusOK,
-		Message: "Token generated successfully",
-		Data: map[string]interface{}{
-			"access_token": tokenString,
-			"token_type":   "Bearer",
-			"expires_in":   3600,
-			"user": map[string]interface{}{
-				"id":       user.ID,
-				"email":    user.Email,
-				"username": user.Username,
-				"status":   user.Status,
-				"roles":    user.Roles,
-			},
-		},
-	})
-}
 
 // validateUserStatus checks if user account is in valid state
 func (j *JWTManager) validateUserStatus(user *models.User) error {
@@ -405,11 +268,21 @@ func (j *JWTManager) CleanupExpiredTokens() {
 	j.Logger.Debugf("Cleaned up expired blacklisted tokens")
 }
 
-// AuthMiddleware validates JWT token from Authorization header
+// AuthMiddleware validates JWT token from Authorization header OR handles login credentials
+// This single function handles both authentication scenarios
 func (j *JWTManager) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
+		
+		// If no Authorization header, check if this is a login request with credentials
 		if authHeader == "" {
+			// Check if this is a login request with JSON body credentials
+			if c.Request.Method == "POST" && c.Request.Header.Get("Content-Type") == "application/json" {
+				j.handleLoginAuthentication(c)
+				return
+			}
+			
+			// Otherwise, require Authorization header
 			j.Logger.Error("Missing Authorization header")
 			c.JSON(http.StatusUnauthorized, models.APIResponse{
 				Status:  "error",
@@ -470,6 +343,153 @@ func (j *JWTManager) AuthMiddleware() gin.HandlerFunc {
 		j.Logger.Debugf("User authenticated: %s", claims.UserID)
 		c.Next()
 	}
+}
+
+// LoginCredentials represents either LoginRequest or User credentials
+type LoginCredentials struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// handleLoginAuthentication handles credential-based authentication for login requests
+func (j *JWTManager) handleLoginAuthentication(c *gin.Context) {
+	var req LoginCredentials
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Println("Error binding JSON: :: handleLoginAuthentication", err)
+		j.Logger.Error("Failed to bind JSON:", err)
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	// Validate input
+	if req.Email == "" || req.Password == "" {
+		j.Logger.Error("Missing email or password")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Missing email or password",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: "Email and password are required",
+			},
+		})
+		return
+	}
+
+	// Get user from database
+	users, err := j.UserRepo.GetUser(req.Email)
+	if err != nil {
+		j.Logger.Error("Failed to get user by email", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get user by email",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	if len(users) == 0 {
+		j.Logger.Error("User not found")
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusUnauthorized,
+			Message: "Invalid email or password",
+			Error: &models.APIError{
+				Type:    "AuthenticationError",
+				Details: "Invalid email or password",
+			},
+		})
+		return
+	}
+
+	user := users[0]
+
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		j.Logger.Error("Invalid password")
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusUnauthorized,
+			Message: "Invalid email or password",
+			Error: &models.APIError{
+				Type:    "AuthenticationError",
+				Details: "Invalid email or password",
+			},
+		})
+		return
+	}
+
+	// Ensure user has roles - if not, set default
+	if len(user.Roles) == 0 {
+		defaultRole := models.RoleAssignment{
+			RoleID:      "role-123",
+			RoleName:    "User",
+			Permissions: []string{"read", "write"},
+			Level:       1,
+			Context: map[string]string{
+				"project_id": "project-123",
+				"org_id":     "org-123",
+			},
+			AssignedAt: time.Now(),
+			ExpiresAt:  nil,
+		}
+		user.Roles = []models.RoleAssignment{defaultRole}
+	}
+
+	// Generate token
+	tokenString, err := j.GenerateToken(user)
+	if err != nil {
+		j.Logger.Error("Token generation failed", err)
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Token generation failed",
+			Error: &models.APIError{
+				Type:    "TokenError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	// Parse token to extract token ID and set as active token
+	tempToken, _ := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(j.Config.JWTSecret), nil
+	})
+	if tempClaims, ok := tempToken.Claims.(*models.JWTClaims); ok {
+		j.SetActiveToken(user.ID, tempClaims.ID)
+	}
+
+	// Return successful authentication response
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "Token generated successfully",
+		Data: map[string]interface{}{
+			"access_token": tokenString,
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+			"user": map[string]interface{}{
+				"id":       user.ID,
+				"email":    user.Email,
+				"username": user.Username,
+				"status":   user.Status,
+				"roles":    user.Roles,
+			},
+		},
+	})
 }
 
 // hasRole checks if user has specific role from current roles

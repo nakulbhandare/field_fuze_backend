@@ -66,15 +66,20 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	})
 
 	user := v1.Group("/user")
-	// User routes
+
+	// User routes - authentication not required
 	user.POST("/register", c.User.Register)
-	user.POST("/login", c.User.Login)
-	user.POST("/logout", c.User.Logout)
-	user.GET("/:id", c.User.GetUser)
-	user.GET("/list", c.User.GetUserList)
-	user.PATCH("/update/:id", c.User.UpdateUser)
-	user.POST("/token", c.User.GenerateToken)
+
+	// Login routes - handled by AuthMiddleware
+	user.POST("/login", c.User.jwtManager.AuthMiddleware(), c.User.Login)
+	user.POST("/token", c.User.jwtManager.AuthMiddleware(), c.User.GenerateToken)
 	user.POST("/validate", c.User.ValidateToken)
+
+	// User routes - authentication required
+	user.POST("/logout", c.User.jwtManager.AuthMiddleware(), c.User.Logout)
+	user.GET("/:id", c.User.jwtManager.AuthMiddleware(), c.User.GetUser)
+	user.GET("/list", c.User.jwtManager.AuthMiddleware(), c.User.GetUserList)
+	user.PATCH("/update/:id", c.User.jwtManager.AuthMiddleware(), c.User.UpdateUser)
 
 	// Create HTTP server
 	srv := &http.Server{
