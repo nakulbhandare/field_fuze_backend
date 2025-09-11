@@ -269,7 +269,7 @@ func ServeSwaggerUI(config SwaggerConfig) gin.HandlerFunc {
 		config.SwaggerDocURL = "/swagger/doc.json"
 	}
 	if config.AuthURL == "" {
-		config.AuthURL = "/api/v1/auth/login"
+		config.AuthURL = "/api/v1/auth/user/login"
 	}
 
 	tmpl := template.Must(template.New("swagger").Parse(swaggerHTML))

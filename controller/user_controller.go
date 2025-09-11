@@ -1,32 +1,35 @@
 package controller
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fieldfuze-backend/middelware"
 	"fieldfuze-backend/models"
 	"fieldfuze-backend/repository"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
-	"time"
 
 	"fieldfuze-backend/utils/logger"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type UserController struct {
-	ctx      context.Context
-	userRepo *repository.UserRepository
-	// jwtManager *auth.JWTManager
-	logger logger.Logger
+	ctx        context.Context
+	userRepo   *repository.UserRepository
+	jwtManager *middelware.JWTManager
+	logger     logger.Logger
 }
 
-func NewUserController(ctx context.Context, userRepo *repository.UserRepository, logger logger.Logger) *UserController {
+func NewUserController(ctx context.Context, userRepo *repository.UserRepository, logger logger.Logger, jwtManager *middelware.JWTManager) *UserController {
 	return &UserController{
-		ctx:      ctx,
-		userRepo: userRepo,
-		logger:   logger,
+		ctx:        ctx,
+		userRepo:   userRepo,
+		logger:     logger,
+		jwtManager: jwtManager,
 	}
 }
 
@@ -291,25 +294,34 @@ func (h *UserController) UpdateUser(c *gin.Context) {
 	})
 }
 
-// GenerateToken handles POST /api/v1/auth/user/token
-// @Summary Generate JWT token
-// @Description Generate or refresh JWT token
+// LoginRequest represents the request body for user login
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email" example:"user@example.com"`
+	Password string `json:"password" binding:"required,min=8" example:"password123"`
+}
+
+// Login handles POST /api/v1/auth/user/login
+// @Summary User login
+// @Description Authenticate user and return JWT token
 // @Tags Authentication
 // @Accept json
 // @Produce json
-// @Param request body models.RegisterUser true "Token generation request"
-// @Success 200 {object} models.APIResponse "Token generated successfully"
-// @Failure 400 {object} models.APIResponse "Bad Request - Invalid token request"
-// @Failure 500 {object} models.APIResponse "Internal Server Error - Token generation failed"
-// @Router /auth/user/token [POST]
-func (h *UserController) GenerateToken(c *gin.Context) {
-	var req models.User
+// @Param request body LoginRequest true "Login request"
+// @Success 200 {object} models.APIResponse "Login successful, returns JWT token"
+// @Failure 400 {object} models.APIResponse "Bad Request - Invalid login data"
+// @Failure 401 {object} models.APIResponse "Unauthorized - Invalid credentials"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Login failed"
+// @Router /auth/user/login [post]
+func (h *UserController) Login(c *gin.Context) {
+	var req LoginRequest
+	fmt.Println("Login request received", c.Request.Body)
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Failed to bind JSON:", err)
+		fmt.Println("Error binding JSON:", err)
+		h.logger.Error("Invalid login request:", err)
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Status:  "error",
 			Code:    http.StatusBadRequest,
-			Message: "Invalid request",
+			Message: "Invalid login request",
 			Error: &models.APIError{
 				Type:    "ValidationError",
 				Details: err.Error(),
@@ -318,115 +330,110 @@ func (h *UserController) GenerateToken(c *gin.Context) {
 		return
 	}
 
-	email, ok := req.Email, req.Email != ""
-	if !ok {
-		h.logger.Error("Missing email or password")
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+	// // Create user model for authentication
+	// userAuth := models.User{
+	// 	Email:    req.Email,
+	// 	Password: req.Password,
+	// }
+
+	// // Set user in context for JWT manager
+	// c.Set("login_request", userAuth)
+	b, _ := json.Marshal(req)                         // marshal back to JSON
+	c.Request.Body = io.NopCloser(bytes.NewReader(b)) // reset the body
+
+	// Delegate to JWT middleware for secure authentication
+	h.jwtManager.AuthenticateUser(c)
+}
+
+// GenerateToken handles POST /api/v1/auth/user/token
+// @Summary Generate JWT token
+// @Description Generate or refresh JWT token (legacy endpoint - use /login instead)
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body models.User true "Token generation request"
+// @Success 200 {object} models.APIResponse "Token generated successfully"
+// @Failure 400 {object} models.APIResponse "Bad Request - Invalid token request"
+// @Failure 401 {object} models.APIResponse "Unauthorized - Invalid credentials"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Token generation failed"
+// @Router /auth/user/token [POST]
+// //
+func (h *UserController) GenerateToken(c *gin.Context) {
+	// Delegate to JWT middleware which handles the complete authentication flow
+	h.jwtManager.AuthenticateUser(c)
+}
+
+// Logout handles POST /api/v1/auth/user/logout
+// @Summary User logout
+// @Description Logout user and revoke current JWT token
+// @Tags Authentication
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.APIResponse "Logout successful"
+// @Failure 401 {object} models.APIResponse "Unauthorized - Invalid or missing token"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Logout failed"
+// @Router /auth/user/logout [post]
+func (h *UserController) Logout(c *gin.Context) {
+	// Extract JWT claims from context (set by auth middleware)
+	claims, exists := c.Get("jwt_claims")
+	if !exists {
+		h.logger.Error("JWT claims not found in context")
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Status:  "error",
-			Code:    http.StatusBadRequest,
-			Message: "Missing email or password",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
 			Error: &models.APIError{
-				Type:    "ValidationError",
-				Details: "Email and password are required",
+				Type:    "AuthenticationError",
+				Details: "User not authenticated",
 			},
 		})
 		return
 	}
 
-	users, err := h.userRepo.GetUser(email)
-	if err != nil {
-		h.logger.Error("Failed to get user by email", fmt.Errorf("error: %v", err))
+	jwtClaims, ok := claims.(*models.JWTClaims)
+	if !ok {
+		h.logger.Error("Invalid JWT claims type")
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Status:  "error",
 			Code:    http.StatusInternalServerError,
-			Message: "Failed to get user by email",
+			Message: "Invalid token claims",
 			Error: &models.APIError{
-				Type:    "DatabaseError",
-				Details: err.Error(),
+				Type:    "TokenError",
+				Details: "Invalid token structure",
 			},
 		})
 		return
 	}
 
-	if len(users) == 0 {
-		h.logger.Error("User not found")
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusUnauthorized,
-			Message: "Invalid email or password",
-			Error: &models.APIError{
-				Type:    "AuthenticationError",
-				Details: "Invalid email or password",
-			},
-		})
-		return
-	}
+	// Revoke the current token (both blacklist and remove from active tokens)
+	h.jwtManager.RevokeUserToken(jwtClaims.UserID, jwtClaims.ID, jwtClaims.ExpiresAt.Time)
 
-	user := users[0]
-	if user.Password != req.Password {
-		h.logger.Error("Invalid password")
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusUnauthorized,
-			Message: "Invalid email or password",
-			Error: &models.APIError{
-				Type:    "AuthenticationError",
-				Details: "Invalid email or password",
-			},
-		})
-		return
-	}
+	h.logger.Debugf("User %s logged out successfully", jwtClaims.UserID)
 
-	roles := models.RoleAssignment{
-		RoleID:      "role-123",
-		RoleName:    "User",
-		Permissions: []string{"read", "write"},
-		Level:       1,
-		Context: map[string]string{
-			"project_id": "project-123",
-			"org_id":     "org-123",
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "Logout successful",
+		Data: map[string]interface{}{
+			"logged_out_at": jwtClaims.ExpiresAt.Time,
+			"user_id":       jwtClaims.UserID,
 		},
-		AssignedAt: time.Now(),
-		ExpiresAt:  nil,
-	}
-
-	// Create JWT claims
-	claims := models.JWTClaims{
-		UserID:   user.ID,
-		Email:    user.Email,
-		Username: user.Username,
-		Status:   user.Status,
-		Roles:    []models.RoleAssignment{roles}, // Simplified for this example
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "FieldFuze",
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)), // token valid for 1 hour
-		},
-		Context: models.UserContext{
-			OrganizationID: "org-123",
-			CustomerID:     "cust-123",
-			WorkerID:       "worker-123",
-		},
-	}
-
-	// Create token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Sign token
-	tokenString, err := token.SignedString([]byte("your-secret-key"))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Token generation failed",
-			"message": err.Error(),
-		})
-		return
-	}
-
-	fmt.Println("Generated Token:", tokenString)
-
-	c.JSON(http.StatusOK, gin.H{
-		"access_token": tokenString,
-		"token_type":   "Bearer",
-		"expires_in":   3600,
 	})
+}
+
+// ValidateToken godoc
+// @Summary      Validate JWT token
+// @Description  Validate a JWT token and return user information with roles
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        request body middelware.TokenValidationRequest true "Token validation request"
+// @Success      200  {object}  models.APIResponse  "Token is valid"
+// @Failure      400  {object}  models.APIResponse  "Bad Request - Missing or invalid token in request body"
+// @Failure      401  {object}  models.APIResponse  "Unauthorized - Invalid or expired token"
+// @Router       /auth/user/validate [post]
+func (h *UserController) ValidateToken(c *gin.Context) {
+	// Delegate to JWT middleware which handles the complete token validation flow
+	h.jwtManager.ValidateTokenEndpoint(c)
 }

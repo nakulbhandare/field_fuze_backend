@@ -244,11 +244,11 @@ const cleanSwaggerHTML = `<!DOCTYPE html>
         loginBtn.innerHTML = '<span>Logging in...</span>';
 
         try {
-          const authUrl = window.AUTH_URL || "/api/v1/auth/login";
+          const authUrl = window.AUTH_URL || "/api/v1/auth/user/login";
           const response = await fetch(authUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: username, password: password }),
+            body: JSON.stringify({ email: username, password: password }),
           });
 
           const data = await response.json();
@@ -292,7 +292,7 @@ func ServeCleanSwagger(config SwaggerConfig) gin.HandlerFunc {
 		config.SwaggerDocURL = "/swagger/doc.json"
 	}
 	if config.AuthURL == "" {
-		config.AuthURL = "/api/v1/auth/login"
+		config.AuthURL = "/api/v1/auth/user/login"
 	}
 
 	tmpl := template.Must(template.New("swagger").Parse(cleanSwaggerHTML))

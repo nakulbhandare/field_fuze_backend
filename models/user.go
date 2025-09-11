@@ -24,20 +24,21 @@ const (
 // User represents a user in the system
 type User struct {
 	ID                       string                 `json:"id" dynamodbav:"id"`
-	Email                    string                 `json:"email" dynamodbav:"email"`
-	Username                 string                 `json:"username" dynamodbav:"username"`
-	Password                 string                 `json:"-" dynamodbav:"password"`
-	FirstName                string                 `json:"first_name" dynamodbav:"first_name"`
-	LastName                 string                 `json:"last_name" dynamodbav:"last_name"`
-	Phone                    *string                `json:"phone,omitempty" dynamodbav:"phone,omitempty"`
-	Role                     UserRole               `json:"role" dynamodbav:"role"`
-	Status                   UserStatus             `json:"status" dynamodbav:"status"`
 	CreatedAt                time.Time              `json:"created_at" dynamodbav:"created_at"`
 	UpdatedAt                time.Time              `json:"updated_at" dynamodbav:"updated_at"`
-	LastLoginAt              *time.Time             `json:"last_login_at,omitempty" dynamodbav:"last_login_at,omitempty"`
-	FailedLoginAttempts      int                    `json:"failed_login_attempts" dynamodbav:"failed_login_attempts"`
-	AccountLockedUntil       *time.Time             `json:"account_locked_until,omitempty" dynamodbav:"account_locked_until,omitempty"`
+	Email                    string                 `json:"email" dynamodbav:"email"`
 	EmailVerified            bool                   `json:"email_verified" dynamodbav:"email_verified"`
+	FailedLoginAttempts      int                    `json:"failed_login_attempts" dynamodbav:"failed_login_attempts"`
+	FirstName                string                 `json:"first_name" dynamodbav:"first_name"`
+	LastName                 string                 `json:"last_name" dynamodbav:"last_name"`
+	Password                 string                 `json:"password" dynamodbav:"password_hash,secret"`
+	Status                   UserStatus             `json:"status" dynamodbav:"status"`
+	Username                 string                 `json:"username" dynamodbav:"username"`
+	Roles                    []RoleAssignment       `json:"roles" dynamodbav:"roles"`
+	Phone                    *string                `json:"phone,omitempty" dynamodbav:"phone,omitempty"`
+	Role                     UserRole               `json:"role,omitempty" dynamodbav:"role,omitempty"` // Keep for backward compatibility
+	LastLoginAt              *time.Time             `json:"last_login_at,omitempty" dynamodbav:"last_login_at,omitempty"`
+	AccountLockedUntil       *time.Time             `json:"account_locked_until,omitempty" dynamodbav:"account_locked_until,omitempty"`
 	EmailVerificationToken   *string                `json:"-" dynamodbav:"email_verification_token,omitempty"`
 	PasswordResetToken       *string                `json:"-" dynamodbav:"password_reset_token,omitempty"`
 	PasswordResetTokenExpiry *time.Time             `json:"-" dynamodbav:"password_reset_token_expiry,omitempty"`

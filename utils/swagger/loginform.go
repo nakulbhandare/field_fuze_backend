@@ -125,7 +125,7 @@ const swaggerWithLoginTemplate = `<!DOCTYPE html>
             try {
                 showStatus('Logging in...', 'info');
 
-                const response = await fetch('/api/v1/auth/login', {
+                const response = await fetch('/api/v1/auth/user/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

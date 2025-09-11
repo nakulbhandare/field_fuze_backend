@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fieldfuze-backend/dal"
+	"fieldfuze-backend/middelware"
 	"fieldfuze-backend/models"
 	"fieldfuze-backend/repository"
 
@@ -23,8 +24,12 @@ func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *
 	if err != nil {
 		log.Fatalf("Failed to initialize DynamoDB client: %v", err)
 	}
+
+	userRepo := repository.NewUserRepository(dbclient, cfg, log)
+	jwtManager := middelware.NewJWTManager(cfg, log, userRepo)
+
 	return &Controller{
-		User: NewUserController(ctx, repository.NewUserRepository(dbclient, cfg, log), log),
+		User: NewUserController(ctx, userRepo, log, jwtManager),
 	}
 }
 
@@ -48,7 +53,7 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	swaggerConfig := swagger.SwaggerConfig{
 		Title:         "FieldFuze Backend API",
 		SwaggerDocURL: "/swagger/doc.json",
-		AuthURL:       "/api/v1/auth/login",
+		AuthURL:       "/api/v1/auth/user/login",
 	}
 	r.GET("/swagger", swagger.ServeCleanSwagger(swaggerConfig))
 	r.GET("/swagger/", swagger.ServeCleanSwagger(swaggerConfig))
@@ -63,10 +68,13 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	user := v1.Group("/user")
 	// User routes
 	user.POST("/register", c.User.Register)
+	user.POST("/login", c.User.Login)
+	user.POST("/logout", c.User.Logout)
 	user.GET("/:id", c.User.GetUser)
 	user.GET("/list", c.User.GetUserList)
 	user.PATCH("/update/:id", c.User.UpdateUser)
 	user.POST("/token", c.User.GenerateToken)
+	user.POST("/validate", c.User.ValidateToken)
 
 	// Create HTTP server
 	srv := &http.Server{

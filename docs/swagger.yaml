@@ -1,5 +1,25 @@
 basePath: /api/v1
 definitions:
+  controller.LoginRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: password123
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  middelware.TokenValidationRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
   models.APIError:
     properties:
       details:
@@ -62,6 +82,27 @@ definitions:
     - password
     - username
     type: object
+  models.RoleAssignment:
+    properties:
+      assigned_at:
+        type: string
+      context:
+        additionalProperties:
+          type: string
+        type: object
+      expires_at:
+        type: string
+      level:
+        type: integer
+      permissions:
+        items:
+          type: string
+        type: array
+      role_id:
+        type: string
+      role_name:
+        type: string
+    type: object
   models.User:
     properties:
       account_locked_until:
@@ -82,13 +123,21 @@ definitions:
         type: string
       last_name:
         type: string
+      password:
+        type: string
       phone:
         type: string
       preferences:
         additionalProperties: true
         type: object
       role:
-        $ref: '#/definitions/models.UserRole'
+        allOf:
+        - $ref: '#/definitions/models.UserRole'
+        description: Keep for backward compatibility
+      roles:
+        items:
+          $ref: '#/definitions/models.RoleAssignment'
+        type: array
       status:
         $ref: '#/definitions/models.UserStatus'
       updated_at:
@@ -208,6 +257,65 @@ paths:
       summary: Get list of users
       tags:
       - User Management
+  /auth/user/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT token
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful, returns JWT token
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid login data
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Invalid credentials
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Login failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: User login
+      tags:
+      - Authentication
+  /auth/user/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout user and revoke current JWT token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Logout failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: User logout
+      tags:
+      - Authentication
   /auth/user/register:
     post:
       consumes:
@@ -246,14 +354,14 @@ paths:
     post:
       consumes:
       - application/json
-      description: Generate or refresh JWT token
+      description: Generate or refresh JWT token (legacy endpoint - use /login instead)
       parameters:
       - description: Token generation request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.RegisterUser'
+          $ref: '#/definitions/models.User'
       produces:
       - application/json
       responses:
@@ -263,6 +371,10 @@ paths:
             $ref: '#/definitions/models.APIResponse'
         "400":
           description: Bad Request - Invalid token request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Invalid credentials
           schema:
             $ref: '#/definitions/models.APIResponse'
         "500":
@@ -311,6 +423,36 @@ paths:
       summary: Update user details
       tags:
       - User Management
+  /auth/user/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validate a JWT token and return user information with roles
+      parameters:
+      - description: Token validation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/middelware.TokenValidationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token is valid
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Missing or invalid token in request body
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Invalid or expired token
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Validate JWT token
+      tags:
+      - Authentication
 securityDefinitions:
   BearerAuth:
     description: JWT Authorization header using the Bearer scheme. Enter 'Bearer'
