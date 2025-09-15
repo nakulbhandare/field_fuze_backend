@@ -24,13 +24,6 @@ type UserContext struct {
 	WorkerID       string `json:"worker_id,omitempty"`
 }
 
-// Role represents a role from roles.json
-type Role struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Level       int      `json:"level"`
-	Permissions []string `json:"permissions"`
-}
 
 // RolesConfig represents the structure of roles.json
 type RolesConfig struct {

@@ -355,15 +355,14 @@ type LoginCredentials struct {
 func (j *JWTManager) handleLoginAuthentication(c *gin.Context) {
 	var req LoginCredentials
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Println("Error binding JSON: :: handleLoginAuthentication", err)
 		j.Logger.Error("Failed to bind JSON:", err)
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Status:  "error",
 			Code:    http.StatusBadRequest,
-			Message: "Invalid request",
+			Message: "An error occurred during login: " + err.Error(),
 			Error: &models.APIError{
 				Type:    "ValidationError",
-				Details: err.Error(),
+				Details: "Invalid JSON format. Expected format: {\"email\":\"user@example.com\",\"password\":\"yourpassword\"}",
 			},
 		})
 		return
