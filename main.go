@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fieldfuze-backend/controller"
+	"fieldfuze-backend/dal"
 	"fieldfuze-backend/models"
 	"fieldfuze-backend/utils"
 	"fieldfuze-backend/utils/logger"
+	"fieldfuze-backend/worker"
 	"fmt"
 	"log"
 	"sync"
@@ -63,15 +65,30 @@ func Init() {
 func main() {
 	Init()
 	fmt.Println("Hello, World!")
-	fmt.Println("Config Loaded ::", config)
+	fmt.Println("Config Loaded ::", dal.PrintPrettyJSON(config))
+
+	ctx := context.Background()
+
 	r := gin.New()
 	c := controller.NewController(context.Background(), config, logger.NewLogger(config.LogLevel, config.LogFormat))
 	var wg sync.WaitGroup
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		c.RegisterRoutes(context.Background(), config, r, config.BasePath) // should call r.Run()
 	}()
+
+	// 🚀 START INFRASTRUCTURE WORKER (CRON JOB)
+	infraWorker, err := worker.NewService(ctx, config, logger.NewLogger(config.LogLevel, config.LogFormat))
+	if err != nil {
+		log.Fatalf("Failed to create infrastructure worker: %v", err)
+	}
+
+	// Start infrastructure worker in background
+	if err := infraWorker.StartInBackground(); err != nil {
+		log.Fatalf("Failed to start infrastructure worker: %v", err)
+	}
 
 	wg.Wait()
 }

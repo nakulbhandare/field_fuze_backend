@@ -3,8 +3,8 @@ package dal
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fieldfuze-backend/models"
-	"fieldfuze-backend/utils"
 	"fmt"
 
 	"fieldfuze-backend/utils/logger"
@@ -21,6 +21,15 @@ type DynamoDBClient struct {
 	client *dynamodb.Client
 	config *models.Config
 	logger logger.Logger
+}
+
+// printPrettyJSON takes any struct or map and prints it as pretty JSON
+func PrintPrettyJSON(data interface{}) string {
+	prettyJSON, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		return fmt.Sprintf("Failed to generate JSON: %v", err)
+	}
+	return string(prettyJSON)
 }
 
 // NewDynamoDBClient creates a new DynamoDB client
@@ -92,7 +101,7 @@ func (db *DynamoDBClient) getSingleItemByPrimaryKey(ctx context.Context, config 
 		return err
 	}
 
-	db.logger.Infof("DynamoDB GetItem output: %s", utils.PrintPrettyJSON(output))
+	db.logger.Infof("DynamoDB GetItem output: %s", PrintPrettyJSON(output))
 
 	if output.Item == nil {
 		return fmt.Errorf("item not found in %s with %s=%s",
@@ -129,7 +138,7 @@ func (db *DynamoDBClient) getSingleItemByIndex(ctx context.Context, config model
 		return err
 	}
 
-	db.logger.Infof("DynamoDB Query output: %s", utils.PrintPrettyJSON(output))
+	db.logger.Infof("DynamoDB Query output: %s", PrintPrettyJSON(output))
 
 	if len(output.Items) == 0 {
 		return fmt.Errorf("item not found in %s with %s=%s using index %s",

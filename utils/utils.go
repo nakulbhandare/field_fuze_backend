@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fieldfuze-backend/models"
+
 	"fmt"
 	"strings"
 	"time"
@@ -116,6 +117,9 @@ func setDefaults(v *viper.Viper) {
 
 	// Base Path default
 	v.SetDefault("basePath", "/api/v1")
+
+	// setup tables to create
+	v.SetDefault("tables", []string{"users1"})
 }
 
 // validate checks if all required configuration is provided

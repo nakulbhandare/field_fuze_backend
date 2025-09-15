@@ -39,4 +39,6 @@ type Config struct {
 
 	// Base Path
 	BasePath string `mapstructure:"basePath"`
+
+	Tables []string `mapstructure:"tables"`
 }
