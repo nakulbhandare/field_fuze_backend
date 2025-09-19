@@ -24,7 +24,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/user/list": {
+        "/user/list": {
             "get": {
                 "security": [
                     {
@@ -78,7 +78,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/login": {
+        "/user/login": {
             "post": {
                 "description": "Authenticate user and return JWT token",
                 "consumes": [
@@ -130,7 +130,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/logout": {
+        "/user/logout": {
             "post": {
                 "security": [
                     {
@@ -170,7 +170,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/register": {
+        "/user/register": {
             "post": {
                 "description": "Create a new user account",
                 "consumes": [
@@ -222,7 +222,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/roles": {
+        "/user/role": {
             "get": {
                 "security": [
                     {
@@ -294,12 +294,12 @@ const docTemplate = `{
                 "summary": "Create a new role",
                 "parameters": [
                     {
-                        "description": "Create role request",
+                        "description": "Create role assignment request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CreateRoleRequest"
+                            "$ref": "#/definitions/models.RoleAssignment"
                         }
                     }
                 ],
@@ -331,7 +331,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/roles/{id}": {
+        "/user/role/{id}": {
             "get": {
                 "security": [
                     {
@@ -411,12 +411,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Update role request",
+                        "description": "Update role assignment request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.UpdateRoleRequest"
+                            "$ref": "#/definitions/models.RoleAssignment"
                         }
                     }
                 ],
@@ -501,7 +501,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/token": {
+        "/user/token": {
             "post": {
                 "description": "Generate or refresh JWT token (legacy endpoint - use /login instead)",
                 "consumes": [
@@ -553,14 +553,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/update/{id}": {
+        "/user/update/{id}": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update user information by ID",
+                "description": "Update user information by ID. Note: Role and Roles fields are ignored - use dedicated role assignment endpoints instead.",
                 "consumes": [
                     "application/json"
                 ],
@@ -580,7 +580,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Update user request",
+                        "description": "Update user request (role/roles fields will be ignored)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -617,7 +617,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/validate": {
+        "/user/validate": {
             "post": {
                 "description": "Validate a JWT token and return user information with roles",
                 "consumes": [
@@ -663,7 +663,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/{id}": {
+        "/user/{id}": {
             "get": {
                 "security": [
                     {
@@ -711,6 +711,146 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error - Failed to retrieve user",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/{user_id}/role/{role_id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign an existing role by ID to a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Assign existing role to user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "role_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role assigned successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid user ID or role ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Insufficient permissions",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - User or role does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict - User already has this role",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to assign role",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove an existing role from a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Remove role from user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "role_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role removed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid user ID or role ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Insufficient permissions",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - User or role does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to remove role",
                         "schema": {
                             "$ref": "#/definitions/models.APIResponse"
                         }
@@ -794,42 +934,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CreateRoleRequest": {
-            "type": "object",
-            "required": [
-                "description",
-                "level",
-                "name",
-                "permissions"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "example": "Administrator role with full access"
-                },
-                "level": {
-                    "type": "integer",
-                    "maximum": 10,
-                    "minimum": 1,
-                    "example": 5
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Admin"
-                },
-                "permissions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "[\"read\"",
-                        " \"write\"",
-                        " \"delete\"]"
-                    ]
-                }
-            }
-        },
         "models.RegisterUser": {
             "description": "User registration request with account details",
             "type": "object",
@@ -874,6 +978,11 @@ const docTemplate = `{
         },
         "models.RoleAssignment": {
             "type": "object",
+            "required": [
+                "level",
+                "permissions",
+                "role_name"
+            ],
             "properties": {
                 "assigned_at": {
                     "type": "string"
@@ -888,10 +997,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "level": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1
                 },
                 "permissions": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }
@@ -900,57 +1012,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.RoleStatus": {
-            "type": "string",
-            "enum": [
-                "active",
-                "inactive",
-                "archived"
-            ],
-            "x-enum-varnames": [
-                "RoleStatusActive",
-                "RoleStatusInactive",
-                "RoleStatusArchived"
-            ]
-        },
-        "models.UpdateRoleRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
                     "type": "string",
-                    "example": "Updated administrator role"
-                },
-                "level": {
-                    "type": "integer",
-                    "example": 6
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Updated Admin"
-                },
-                "permissions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "[\"read\"",
-                        " \"write\"",
-                        " \"delete\"",
-                        " \"admin\"]"
-                    ]
-                },
-                "status": {
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.RoleStatus"
-                        }
-                    ],
-                    "example": "active"
+                    "maxLength": 50,
+                    "minLength": 2
                 }
             }
         },

@@ -22,39 +22,33 @@ func NewRoleService(roleRepo *repository.RoleRepository, logger logger.Logger) *
 	}
 }
 
-func (s *RoleService) CreateRole(ctx context.Context, req *models.CreateRoleRequest, createdBy string) (*models.Role, error) {
-	if err := s.validateCreateRoleRequest(req); err != nil {
+func (s *RoleService) CreateRole(ctx context.Context, roleAssignment *models.RoleAssignment, createdBy string) (*models.RoleAssignment, error) {
+	if err := s.validateCreateRoleAssignment(roleAssignment); err != nil {
 		return nil, err
 	}
 
-	role := &models.Role{
-		Name:        strings.TrimSpace(req.Name),
-		Description: strings.TrimSpace(req.Description),
-		Level:       req.Level,
-		Permissions: req.Permissions,
-		CreatedBy:   createdBy,
-		UpdatedBy:   createdBy,
-	}
+	// Set system-generated fields
+	roleAssignment.RoleName = strings.TrimSpace(roleAssignment.RoleName)
 
-	return s.roleRepo.CreateRole(ctx, role)
+	return s.roleRepo.CreateRoleAssignment(ctx, roleAssignment)
 }
 
-func (s *RoleService) GetRoles() ([]*models.Role, error) {
-	return s.roleRepo.GetRole("")
+func (s *RoleService) GetRoleAssignments() ([]*models.RoleAssignment, error) {
+	return s.roleRepo.GetRoleAssignments("")
 }
 
-func (s *RoleService) GetRoleByID(id string) (*models.Role, error) {
+func (s *RoleService) GetRoleAssignmentByID(id string) (*models.RoleAssignment, error) {
 	if strings.TrimSpace(id) == "" {
-		return nil, errors.New("role ID is required")
+		return nil, errors.New("role assignment ID is required")
 	}
 
-	roles, err := s.roleRepo.GetRole(id)
+	roles, err := s.roleRepo.GetRoleAssignments(id)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(roles) == 0 {
-		return nil, errors.New("role not found")
+		return nil, errors.New("role assignment not found")
 	}
 
 	return roles[0], nil
@@ -117,44 +111,59 @@ func (s *RoleService) DeleteRole(id string) error {
 	return s.roleRepo.DeleteRole(id)
 }
 
-func (s *RoleService) GetRolesByStatus(status models.RoleStatus) ([]*models.Role, error) {
+func (s *RoleService) GetRoleAssignmentsByStatus(status string) ([]*models.RoleAssignment, error) {
 	if status == "" {
 		return nil, errors.New("status is required")
 	}
 
-	return s.roleRepo.GetRolesByStatus(status)
+	return s.roleRepo.GetRoleAssignmentsByStatus(status)
 }
 
-func (s *RoleService) validateCreateRoleRequest(req *models.CreateRoleRequest) error {
-	if req == nil {
-		return errors.New("create role request is required")
+func (s *RoleService) UpdateRoleAssignment(id string, roleAssignment *models.RoleAssignment, updatedBy string) (*models.RoleAssignment, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, errors.New("role assignment ID is required")
 	}
 
-	if strings.TrimSpace(req.Name) == "" {
+	if err := s.validateCreateRoleAssignment(roleAssignment); err != nil {
+		return nil, err
+	}
+
+	roleAssignment.RoleID = id
+	roleAssignment.RoleName = strings.TrimSpace(roleAssignment.RoleName)
+
+	return s.roleRepo.UpdateRoleAssignment(id, roleAssignment)
+}
+
+func (s *RoleService) DeleteRoleAssignment(id string) error {
+	if strings.TrimSpace(id) == "" {
+		return errors.New("role assignment ID is required")
+	}
+
+	return s.roleRepo.DeleteRoleAssignment(id)
+}
+
+func (s *RoleService) validateCreateRoleAssignment(roleAssignment *models.RoleAssignment) error {
+	if roleAssignment == nil {
+		return errors.New("role assignment is required")
+	}
+
+	if strings.TrimSpace(roleAssignment.RoleName) == "" {
 		return errors.New("role name is required")
 	}
 
-	if len(req.Name) > 100 {
+	if len(roleAssignment.RoleName) > 100 {
 		return errors.New("role name must be less than 100 characters")
 	}
 
-	if strings.TrimSpace(req.Description) == "" {
-		return errors.New("role description is required")
-	}
-
-	if len(req.Description) > 500 {
-		return errors.New("role description must be less than 500 characters")
-	}
-
-	if req.Level < 1 || req.Level > 10 {
+	if roleAssignment.Level < 1 || roleAssignment.Level > 10 {
 		return errors.New("role level must be between 1 and 10")
 	}
 
-	if len(req.Permissions) == 0 {
+	if len(roleAssignment.Permissions) == 0 {
 		return errors.New("at least one permission is required")
 	}
 
-	for _, permission := range req.Permissions {
+	for _, permission := range roleAssignment.Permissions {
 		if strings.TrimSpace(permission) == "" {
 			return errors.New("permission cannot be empty")
 		}

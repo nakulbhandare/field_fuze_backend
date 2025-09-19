@@ -28,29 +28,130 @@ func NewRoleRepository(db *dal.DynamoDBClient, cfg *models.Config, log logger.Lo
 	}
 }
 
-func (r *RoleRepository) CreateRole(ctx context.Context, role *models.Role) (*models.Role, error) {
-	r.logger.Infof("Creating role: %s", role.Name)
+func (r *RoleRepository) CreateRoleAssignment(ctx context.Context, roleAssignment *models.RoleAssignment) (*models.RoleAssignment, error) {
+	r.logger.Infof("Creating role assignment: %s", roleAssignment.RoleName)
 
-	existingRole := &models.Role{}
-	err := r.db.QueryByIndex(ctx, r.config.DynamoDBTablePrefix+"_roles", "name-index", "name", role.Name, &[]*models.Role{existingRole})
-	if err == nil && existingRole.ID != "" {
+	existingRole := &models.RoleAssignment{}
+	err := r.db.QueryByIndex(ctx, r.config.DynamoDBTablePrefix+"_role", "name-index", "role_name", roleAssignment.RoleName, &[]*models.RoleAssignment{existingRole})
+	if err == nil && existingRole.RoleID != "" {
 		return nil, errors.New("role with this name already exists")
 	}
 
 	now := time.Now()
-	role.ID = utils.GenerateUUID()
-	role.CreatedAt = now
-	role.UpdatedAt = now
-	role.Status = models.RoleStatusActive
+	roleAssignment.RoleID = utils.GenerateUUID()
+	roleAssignment.AssignedAt = now
 
-	err = r.db.PutItem(ctx, r.config.DynamoDBTablePrefix+"_roles", role)
+	fmt.Println("roles ::::", dal.PrintPrettyJSON(roleAssignment))
+
+	err = r.db.PutItem(ctx, r.config.DynamoDBTablePrefix+"_role", roleAssignment)
 	if err != nil {
-		r.logger.Errorf("Failed to create role: %v", err)
+		r.logger.Errorf("Failed to create role assignment: %v", err)
 		return nil, err
 	}
 
-	r.logger.Infof("Role created successfully: %s", role.ID)
-	return role, nil
+	r.logger.Infof("Role assignment created successfully: %s", roleAssignment.RoleID)
+	return roleAssignment, nil
+}
+
+func (r *RoleRepository) GetRoleAssignments(key string) ([]*models.RoleAssignment, error) {
+	ctx := context.Background()
+
+	if key == "" {
+		var roleAssignments []*models.RoleAssignment
+		tableName := r.config.DynamoDBTablePrefix + "_role"
+
+		r.logger.Infof("Scanning %s table for all role assignments", tableName)
+
+		err := r.db.ScanTable(ctx, tableName, &roleAssignments)
+		if err != nil {
+			r.logger.Errorf("Failed to scan role assignments table: %v", err)
+			return nil, fmt.Errorf("failed to get all role assignments: %w", err)
+		}
+
+		r.logger.Infof("Found %d role assignments", len(roleAssignments))
+		return roleAssignments, nil
+	}
+
+	roleAssignment := models.RoleAssignment{}
+	config := models.QueryConfig{
+		TableName: r.config.DynamoDBTablePrefix + "_role",
+		KeyName:   "role_id",
+		KeyValue:  key,
+		KeyType:   models.StringType,
+	}
+
+	r.logger.Infof("Querying %s table with role_id: %s", r.config.DynamoDBTablePrefix+"_role", key)
+
+	err := r.db.GetItem(ctx, config, &roleAssignment)
+	if err != nil {
+		r.logger.Errorf("Failed to get role assignment by ID: %v", err)
+		return nil, fmt.Errorf("failed to get role assignment by ID: %w", err)
+	}
+
+	return []*models.RoleAssignment{&roleAssignment}, nil
+}
+
+func (r *RoleRepository) GetRoleAssignmentsByStatus(status string) ([]*models.RoleAssignment, error) {
+	ctx := context.Background()
+
+	var roleAssignments []*models.RoleAssignment
+	tableName := r.config.DynamoDBTablePrefix + "_role"
+
+	r.logger.Infof("Scanning %s table for role assignments with status: %s", tableName, status)
+
+	err := r.db.ScanTable(ctx, tableName, &roleAssignments)
+	if err != nil {
+		r.logger.Errorf("Failed to get role assignments by status: %v", err)
+		return nil, fmt.Errorf("failed to get role assignments by status: %w", err)
+	}
+
+	// Since RoleAssignment doesn't have status field, return all for now
+	// You may want to filter based on your business logic
+	r.logger.Infof("Found %d role assignments for status filter", len(roleAssignments))
+	return roleAssignments, nil
+}
+
+func (r *RoleRepository) UpdateRoleAssignment(id string, roleAssignment *models.RoleAssignment) (*models.RoleAssignment, error) {
+	ctx := context.Background()
+	r.logger.Infof("Updating role assignment: %s", id)
+
+	// Check if role assignment exists
+	existing, err := r.GetRoleAssignments(id)
+	if err != nil || len(existing) == 0 {
+		return nil, errors.New("role assignment not found")
+	}
+
+	// Update the role assignment
+	roleAssignment.RoleID = id
+	err = r.db.PutItem(ctx, r.config.DynamoDBTablePrefix+"_role", roleAssignment)
+	if err != nil {
+		r.logger.Errorf("Failed to update role assignment: %v", err)
+		return nil, err
+	}
+
+	r.logger.Infof("Role assignment updated successfully: %s", id)
+	return roleAssignment, nil
+}
+
+func (r *RoleRepository) DeleteRoleAssignment(id string) error {
+	ctx := context.Background()
+	r.logger.Infof("Deleting role assignment: %s", id)
+
+	// Check if role assignment exists
+	existing, err := r.GetRoleAssignments(id)
+	if err != nil || len(existing) == 0 {
+		return errors.New("role assignment not found")
+	}
+
+	tableName := r.config.DynamoDBTablePrefix + "_role"
+	err = r.db.DeleteItem(ctx, tableName, "role_id", id)
+	if err != nil {
+		r.logger.Errorf("Failed to delete role assignment: %v", err)
+		return fmt.Errorf("failed to delete role assignment: %w", err)
+	}
+
+	r.logger.Infof("Role assignment deleted successfully: %s", id)
+	return nil
 }
 
 func (r *RoleRepository) GetRole(key string) ([]*models.Role, error) {

@@ -59,10 +59,10 @@
             }
         ]
     },
-    "roles": {
+    "role": {
         "AttributeDefinitions": [
             {
-                "AttributeName": "id",
+                "AttributeName": "role_id",
                 "AttributeType": "S"
             },
             {
@@ -76,7 +76,7 @@
         ],
         "KeySchema": [
             {
-                "AttributeName": "id",
+                "AttributeName": "role_id",
                 "KeyType": "HASH"
             }
         ],

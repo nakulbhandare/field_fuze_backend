@@ -22,10 +22,8 @@
     "app_id": "",
     "public_key": ""
   },
-  "logging": {
-    "level": "info",
-    "format": "json"
-  },
+  "log_level": "debug",
+  "log_format": "text",
   "cors": {
     "origins": ["*"]
   },
@@ -33,5 +31,5 @@
     "requests_per_minute": 100
   },
   "basePath": "/api/v1/auth",
-  "tables": ["users1", "call_history"]
+  "tables": ["users1", "role"]
 }

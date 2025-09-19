@@ -10,6 +10,7 @@ import (
 	"fieldfuze-backend/worker"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -69,10 +70,18 @@ func main() {
 	ctx := context.Background()
 
 	r := gin.New()
+	
+	// Add Gin's default logger middleware for colored API call logs
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	
 	c := controller.NewController(context.Background(), config, logger.NewLogger(config.LogLevel, config.LogFormat))
-
-	// Start server (this is blocking)
-	go c.RegisterRoutes(context.Background(), config, r, config.BasePath)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.RegisterRoutes(context.Background(), config, r, config.BasePath) // should call r.Run()
+	}()
 
 	// 🚀 START INFRASTRUCTURE WORKER (CRON JOB)
 	infraWorker, err := worker.NewService(ctx, config, logger.NewLogger(config.LogLevel, config.LogFormat))
@@ -85,6 +94,5 @@ func main() {
 		log.Fatalf("Failed to start infrastructure worker: %v", err)
 	}
 
-	// Keep main goroutine alive
-	select {}
+	wg.Wait()
 }

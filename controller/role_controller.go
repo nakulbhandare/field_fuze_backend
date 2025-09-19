@@ -7,14 +7,17 @@ import (
 	"fieldfuze-backend/utils/logger"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 type RoleController struct {
 	ctx         context.Context
 	roleService *services.RoleService
 	logger      logger.Logger
+	validator   *validator.Validate
 }
 
 func NewRoleController(ctx context.Context, roleService *services.RoleService, logger logger.Logger) *RoleController {
@@ -22,10 +25,37 @@ func NewRoleController(ctx context.Context, roleService *services.RoleService, l
 		ctx:         ctx,
 		roleService: roleService,
 		logger:      logger,
+		validator:   validator.New(),
 	}
 }
 
-// GetRoles handles GET /api/v1/auth/roles
+// formatValidationErrors formats validation errors into readable messages
+func (h *RoleController) formatValidationErrors(err error) string {
+	var errorMessages []string
+	
+	if validationErrors, ok := err.(validator.ValidationErrors); ok {
+		for _, fieldError := range validationErrors {
+			switch fieldError.Tag() {
+			case "required":
+				errorMessages = append(errorMessages, fieldError.Field()+" is required")
+			case "min":
+				errorMessages = append(errorMessages, fieldError.Field()+" must be at least "+fieldError.Param()+" characters/items")
+			case "max":
+				errorMessages = append(errorMessages, fieldError.Field()+" must be at most "+fieldError.Param()+" characters/items")
+			case "alpha_unicode":
+				errorMessages = append(errorMessages, fieldError.Field()+" must contain only letters, numbers, and unicode characters")
+			case "oneof":
+				errorMessages = append(errorMessages, fieldError.Field()+" must be one of: "+strings.ReplaceAll(fieldError.Param(), " ", ", "))
+			default:
+				errorMessages = append(errorMessages, fieldError.Field()+" is invalid")
+			}
+		}
+	}
+	
+	return strings.Join(errorMessages, "; ")
+}
+
+// GetRoles handles GET /api/v1/auth/user/role
 // @Summary Get all roles
 // @Description Retrieve a list of all roles
 // @Tags Role Management
@@ -37,7 +67,7 @@ func NewRoleController(ctx context.Context, roleService *services.RoleService, l
 // @Param status query string false "Filter by role status (active, inactive, archived)"
 // @Success 200 {object} models.APIResponse "Roles retrieved successfully"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to retrieve roles"
-// @Router /auth/user/roles [get]
+// @Router /user/role [get]
 func (h *RoleController) GetRoles(c *gin.Context) {
 	status := c.Query("status")
 	page := 1
@@ -55,14 +85,13 @@ func (h *RoleController) GetRoles(c *gin.Context) {
 		}
 	}
 
-	var roles []*models.Role
+	var roles []*models.RoleAssignment
 	var err error
 
 	if status != "" {
-		roleStatus := models.RoleStatus(status)
-		roles, err = h.roleService.GetRolesByStatus(roleStatus)
+		roles, err = h.roleService.GetRoleAssignmentsByStatus(status)
 	} else {
-		roles, err = h.roleService.GetRoles()
+		roles, err = h.roleService.GetRoleAssignments()
 	}
 
 	if err != nil {
@@ -83,7 +112,7 @@ func (h *RoleController) GetRoles(c *gin.Context) {
 	totalPages := (total + limit - 1) / limit
 	offset := (page - 1) * limit
 
-	var paginatedRoles []*models.Role
+	var paginatedRoles []*models.RoleAssignment
 	if offset < total {
 		end := offset + limit
 		if end > total {
@@ -91,7 +120,7 @@ func (h *RoleController) GetRoles(c *gin.Context) {
 		}
 		paginatedRoles = roles[offset:end]
 	} else {
-		paginatedRoles = []*models.Role{}
+		paginatedRoles = []*models.RoleAssignment{}
 	}
 
 	responseData := map[string]interface{}{
@@ -114,21 +143,21 @@ func (h *RoleController) GetRoles(c *gin.Context) {
 	})
 }
 
-// CreateRole handles POST /api/v1/auth/roles
+// CreateRole handles POST /api/v1/auth/user/role
 // @Summary Create a new role
 // @Description Create a new role with specified permissions
 // @Tags Role Management
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param request body models.CreateRoleRequest true "Create role request"
+// @Param request body models.RoleAssignment true "Create role assignment request"
 // @Success 201 {object} models.APIResponse "Role created successfully"
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid role data"
 // @Failure 409 {object} models.APIResponse "Conflict - Role already exists"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Role creation failed"
-// @Router /auth/user/roles [post]
+// @Router /user/role [post]
 func (h *RoleController) CreateRole(c *gin.Context) {
-	var req models.CreateRoleRequest
+	var req models.RoleAssignment
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("Failed to bind JSON:", err)
 		c.JSON(http.StatusBadRequest, models.APIResponse{
@@ -138,6 +167,21 @@ func (h *RoleController) CreateRole(c *gin.Context) {
 			Error: &models.APIError{
 				Type:    "ValidationError",
 				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	// Perform struct-level validation
+	if err := h.validator.Struct(&req); err != nil {
+		h.logger.Error("Validation failed:", err)
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Validation failed",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: h.formatValidationErrors(err),
 			},
 		})
 		return
@@ -200,7 +244,7 @@ func (h *RoleController) CreateRole(c *gin.Context) {
 	})
 }
 
-// GetRole handles GET /api/v1/auth/roles/:id
+// GetRole handles GET /api/v1/auth/user/role/:id
 // @Summary Get role by ID
 // @Description Retrieve role details by ID
 // @Tags Role Management
@@ -212,11 +256,11 @@ func (h *RoleController) CreateRole(c *gin.Context) {
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid role ID"
 // @Failure 404 {object} models.APIResponse "Not Found - Role does not exist"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to retrieve role"
-// @Router /auth/user/roles/{id} [get]
+// @Router /user/role/{id} [get]
 func (h *RoleController) GetRole(c *gin.Context) {
 	roleID := c.Param("id")
 
-	role, err := h.roleService.GetRoleByID(roleID)
+	role, err := h.roleService.GetRoleAssignmentByID(roleID)
 	if err != nil {
 		h.logger.Error("Failed to get role by ID", err)
 		statusCode := http.StatusInternalServerError
@@ -243,7 +287,7 @@ func (h *RoleController) GetRole(c *gin.Context) {
 	})
 }
 
-// UpdateRole handles PUT /api/v1/auth/roles/:id
+// UpdateRole handles PUT /api/v1/auth/user/role/:id
 // @Summary Update role by ID
 // @Description Update role information by ID
 // @Tags Role Management
@@ -251,14 +295,14 @@ func (h *RoleController) GetRole(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "Role ID"
-// @Param request body models.UpdateRoleRequest true "Update role request"
+// @Param request body models.RoleAssignment true "Update role assignment request"
 // @Success 200 {object} models.APIResponse "Role updated successfully"
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid role ID or data"
 // @Failure 404 {object} models.APIResponse "Not Found - Role does not exist"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to update role"
-// @Router /auth/user/roles/{id} [put]
+// @Router /user/role/{id} [put]
 func (h *RoleController) UpdateRole(c *gin.Context) {
-	var req models.UpdateRoleRequest
+	var req models.RoleAssignment
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("Failed to bind JSON:", err)
 		c.JSON(http.StatusBadRequest, models.APIResponse{
@@ -268,6 +312,21 @@ func (h *RoleController) UpdateRole(c *gin.Context) {
 			Error: &models.APIError{
 				Type:    "ValidationError",
 				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	// Perform struct-level validation
+	if err := h.validator.Struct(&req); err != nil {
+		h.logger.Error("Validation failed:", err)
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Validation failed",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: h.formatValidationErrors(err),
 			},
 		})
 		return
@@ -318,7 +377,7 @@ func (h *RoleController) UpdateRole(c *gin.Context) {
 		return
 	}
 
-	updatedRole, err := h.roleService.UpdateRole(roleID, &req, jwtClaims.UserID)
+	updatedRole, err := h.roleService.UpdateRoleAssignment(roleID, &req, jwtClaims.UserID)
 	if err != nil {
 		h.logger.Error("Failed to update role", err)
 		statusCode := http.StatusInternalServerError
@@ -347,7 +406,7 @@ func (h *RoleController) UpdateRole(c *gin.Context) {
 	})
 }
 
-// DeleteRole handles DELETE /api/v1/auth/roles/:id
+// DeleteRole handles DELETE /api/v1/auth/user/role/:id
 // @Summary Delete role by ID
 // @Description Delete role by ID
 // @Tags Role Management
@@ -359,11 +418,11 @@ func (h *RoleController) UpdateRole(c *gin.Context) {
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid role ID"
 // @Failure 404 {object} models.APIResponse "Not Found - Role does not exist"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to delete role"
-// @Router /auth/user/roles/{id} [delete]
+// @Router /user/role/{id} [delete]
 func (h *RoleController) DeleteRole(c *gin.Context) {
 	roleID := c.Param("id")
 
-	err := h.roleService.DeleteRole(roleID)
+	err := h.roleService.DeleteRoleAssignment(roleID)
 	if err != nil {
 		h.logger.Error("Failed to delete role", err)
 		statusCode := http.StatusInternalServerError

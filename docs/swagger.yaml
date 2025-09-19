@@ -50,33 +50,6 @@ definitions:
         description: '"success" or "error"'
         type: string
     type: object
-  models.CreateRoleRequest:
-    properties:
-      description:
-        example: Administrator role with full access
-        type: string
-      level:
-        example: 5
-        maximum: 10
-        minimum: 1
-        type: integer
-      name:
-        example: Admin
-        type: string
-      permissions:
-        example:
-        - '["read"'
-        - ' "write"'
-        - ' "delete"]'
-        items:
-          type: string
-        type: array
-    required:
-    - description
-    - level
-    - name
-    - permissions
-    type: object
   models.RegisterUser:
     description: User registration request with account details
     properties:
@@ -120,50 +93,24 @@ definitions:
       expires_at:
         type: string
       level:
+        maximum: 10
+        minimum: 1
         type: integer
       permissions:
         items:
           type: string
+        minItems: 1
         type: array
       role_id:
         type: string
       role_name:
+        maxLength: 50
+        minLength: 2
         type: string
-    type: object
-  models.RoleStatus:
-    enum:
-    - active
-    - inactive
-    - archived
-    type: string
-    x-enum-varnames:
-    - RoleStatusActive
-    - RoleStatusInactive
-    - RoleStatusArchived
-  models.UpdateRoleRequest:
-    properties:
-      description:
-        example: Updated administrator role
-        type: string
-      level:
-        example: 6
-        type: integer
-      name:
-        example: Updated Admin
-        type: string
-      permissions:
-        example:
-        - '["read"'
-        - ' "write"'
-        - ' "delete"'
-        - ' "admin"]'
-        items:
-          type: string
-        type: array
-      status:
-        allOf:
-        - $ref: '#/definitions/models.RoleStatus'
-        example: active
+    required:
+    - level
+    - permissions
+    - role_name
     type: object
   models.User:
     properties:
@@ -254,7 +201,7 @@ info:
   title: FieldFuze Backend API
   version: "1.0"
 paths:
-  /auth/user/{id}:
+  /user/{id}:
     get:
       consumes:
       - application/json
@@ -289,7 +236,98 @@ paths:
       summary: Get user details
       tags:
       - User Management
-  /auth/user/list:
+  /user/{user_id}/role/{role_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove an existing role from a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role ID
+        in: path
+        name: role_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role removed successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid user ID or role ID
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Insufficient permissions
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - User or role does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to remove role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove role from user
+      tags:
+      - User Management
+    post:
+      consumes:
+      - application/json
+      description: Assign an existing role by ID to a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role ID
+        in: path
+        name: role_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role assigned successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid user ID or role ID
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Insufficient permissions
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - User or role does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "409":
+          description: Conflict - User already has this role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to assign role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign existing role to user
+      tags:
+      - User Management
+  /user/list:
     get:
       consumes:
       - application/json
@@ -323,7 +361,7 @@ paths:
       summary: Get list of users
       tags:
       - User Management
-  /auth/user/login:
+  /user/login:
     post:
       consumes:
       - application/json
@@ -357,7 +395,7 @@ paths:
       summary: User login
       tags:
       - Authentication
-  /auth/user/logout:
+  /user/logout:
     post:
       consumes:
       - application/json
@@ -382,7 +420,7 @@ paths:
       summary: User logout
       tags:
       - Authentication
-  /auth/user/register:
+  /user/register:
     post:
       consumes:
       - application/json
@@ -416,7 +454,7 @@ paths:
       summary: Register a new user
       tags:
       - Authentication
-  /auth/user/roles:
+  /user/role:
     get:
       consumes:
       - application/json
@@ -455,12 +493,12 @@ paths:
       - application/json
       description: Create a new role with specified permissions
       parameters:
-      - description: Create role request
+      - description: Create role assignment request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateRoleRequest'
+          $ref: '#/definitions/models.RoleAssignment'
       produces:
       - application/json
       responses:
@@ -485,7 +523,7 @@ paths:
       summary: Create a new role
       tags:
       - Role Management
-  /auth/user/roles/{id}:
+  /user/role/{id}:
     delete:
       consumes:
       - application/json
@@ -564,12 +602,12 @@ paths:
         name: id
         required: true
         type: string
-      - description: Update role request
+      - description: Update role assignment request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateRoleRequest'
+          $ref: '#/definitions/models.RoleAssignment'
       produces:
       - application/json
       responses:
@@ -594,7 +632,7 @@ paths:
       summary: Update role by ID
       tags:
       - Role Management
-  /auth/user/token:
+  /user/token:
     post:
       consumes:
       - application/json
@@ -628,18 +666,19 @@ paths:
       summary: Generate JWT token
       tags:
       - Authentication
-  /auth/user/update/{id}:
+  /user/update/{id}:
     patch:
       consumes:
       - application/json
-      description: Update user information by ID
+      description: 'Update user information by ID. Note: Role and Roles fields are
+        ignored - use dedicated role assignment endpoints instead.'
       parameters:
       - description: User ID
         in: path
         name: id
         required: true
         type: string
-      - description: Update user request
+      - description: Update user request (role/roles fields will be ignored)
         in: body
         name: request
         required: true
@@ -669,7 +708,7 @@ paths:
       summary: Update user details
       tags:
       - User Management
-  /auth/user/validate:
+  /user/validate:
     post:
       consumes:
       - application/json
