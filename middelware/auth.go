@@ -78,7 +78,6 @@ func (j *JWTManager) GenerateToken(user *models.User) (string, error) {
 	return tokenString, nil
 }
 
-
 // validateUserStatus checks if user account is in valid state
 func (j *JWTManager) validateUserStatus(user *models.User) error {
 	if user.Status != models.UserStatusActive {
@@ -100,6 +99,7 @@ func (j *JWTManager) validateRoleAssignments(tokenRoles, dbRoles []models.RoleAs
 	}
 
 	now := time.Now()
+	validRoles := []models.RoleAssignment{}
 
 	// Check each role in token exists in database and is not expired
 	for _, tokenRole := range tokenRoles {
@@ -109,16 +109,25 @@ func (j *JWTManager) validateRoleAssignments(tokenRoles, dbRoles []models.RoleAs
 			if tokenRole.RoleID == dbRole.RoleID {
 				// Check if role has expired
 				if dbRole.ExpiresAt != nil && dbRole.ExpiresAt.Before(now) {
+					j.Logger.Errorf("Role '%s' has expired for user", dbRole.RoleName)
 					return fmt.Errorf("role '%s' has expired", dbRole.RoleName)
 				}
 				roleFound = true
+				validRoles = append(validRoles, dbRole)
 				break
 			}
 		}
 
 		if !roleFound {
+			j.Logger.Errorf("Token validation failed: role '%s' no longer assigned to user", tokenRole.RoleName)
 			return fmt.Errorf("role '%s' no longer assigned to user", tokenRole.RoleName)
 		}
+	}
+
+	// If user has no valid roles remaining, deny access
+	if len(validRoles) == 0 && len(tokenRoles) > 0 {
+		j.Logger.Errorf("User has no valid roles remaining")
+		return fmt.Errorf("no valid roles assigned to user")
 	}
 
 	return nil
@@ -181,14 +190,11 @@ func (j *JWTManager) ValidateToken(tokenString string) (*models.JWTClaims, error
 		return nil, fmt.Errorf("token has been revoked")
 	}
 
-	// Check if this is the current active token for the user (single token per user)
-	activeTokenID, isActive := j.ActiveTokens[claims.UserID]
+	// Allow multiple active tokens per user (disabled single-token enforcement)
 	j.TokenMutex.RUnlock()
-
-	if !isActive || activeTokenID != claims.ID {
-		j.Logger.Error("Token is not the current active token for user")
-		return nil, fmt.Errorf("token has been invalidated")
-	}
+	
+	// Note: Single token enforcement disabled to allow multiple concurrent sessions
+	// Original validation: activeTokenID, isActive := j.ActiveTokens[claims.UserID]
 
 	// Cross-verify with database for security
 	if j.UserRepo != nil {
@@ -273,15 +279,16 @@ func (j *JWTManager) CleanupExpiredTokens() {
 func (j *JWTManager) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		
+
 		// If no Authorization header, check if this is a login request with credentials
 		if authHeader == "" {
 			// Check if this is a login request with JSON body credentials
 			if c.Request.Method == "POST" && c.Request.Header.Get("Content-Type") == "application/json" {
+				fmt.Println("here i'm")
 				j.handleLoginAuthentication(c)
 				return
 			}
-			
+			fmt.Println("hererehehehh112121212")
 			// Otherwise, require Authorization header
 			j.Logger.Error("Missing Authorization header")
 			c.JSON(http.StatusUnauthorized, models.APIResponse{
@@ -355,15 +362,14 @@ type LoginCredentials struct {
 func (j *JWTManager) handleLoginAuthentication(c *gin.Context) {
 	var req LoginCredentials
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Println("Error binding JSON: :: handleLoginAuthentication", err)
 		j.Logger.Error("Failed to bind JSON:", err)
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Status:  "error",
 			Code:    http.StatusBadRequest,
-			Message: "Invalid request",
+			Message: "An error occurred during login: " + err.Error(),
 			Error: &models.APIError{
 				Type:    "ValidationError",
-				Details: err.Error(),
+				Details: "Invalid JSON format. Expected format: {\"email\":\"user@example.com\",\"password\":\"yourpassword\"}",
 			},
 		})
 		return
@@ -465,12 +471,13 @@ func (j *JWTManager) handleLoginAuthentication(c *gin.Context) {
 	}
 
 	// Parse token to extract token ID and set as active token
-	tempToken, _ := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(j.Config.JWTSecret), nil
-	})
-	if tempClaims, ok := tempToken.Claims.(*models.JWTClaims); ok {
-		j.SetActiveToken(user.ID, tempClaims.ID)
-	}
+	// Temporarily disabled to allow multiple concurrent sessions
+	// tempToken, _ := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	// 	return []byte(j.Config.JWTSecret), nil
+	// })
+	// if tempClaims, ok := tempToken.Claims.(*models.JWTClaims); ok {
+	// 	j.SetActiveToken(user.ID, tempClaims.ID)
+	// }
 
 	// Return successful authentication response
 	c.JSON(http.StatusOK, models.APIResponse{

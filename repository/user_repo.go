@@ -206,12 +206,8 @@ func (r *UserRepository) UpdateUser(id string, user *models.User) (*models.User,
 	if user.Status != "" {
 		updates["status"] = user.Status
 	}
-	if user.Role != "" {
-		updates["role"] = user.Role
-	}
-	if user.Roles != nil {
-		updates["roles"] = user.Roles
-	}
+	// Role and Roles fields are not allowed to be updated via UpdateUser
+	// Use dedicated role assignment methods instead
 	if user.Password != "" {
 		// Hash new password
 		hashedPassword, err := utils.HashPassword(user.Password)
@@ -243,12 +239,7 @@ func (r *UserRepository) UpdateUser(id string, user *models.User) (*models.User,
 	if user.Status != "" {
 		existingUser.Status = user.Status
 	}
-	if user.Role != "" {
-		existingUser.Role = user.Role
-	}
-	if user.Roles != nil {
-		existingUser.Roles = user.Roles
-	}
+	// Role and Roles fields are not updated via UpdateUser method
 	if user.Password != "" {
 		existingUser.Password = updates["password_hash"].(string)
 	}
@@ -372,6 +363,78 @@ func (r *UserRepository) AddRoleToUser(ctx context.Context, userID string, roleA
 
 	user.UpdatedAt = time.Now()
 	r.logger.Infof("Role added successfully to user: %s", userID)
+	return &user, nil
+}
+
+// AssignRoleToUser assigns an existing role by ID to a user
+func (r *UserRepository) AssignRoleToUser(ctx context.Context, userID, roleID string) (*models.User, error) {
+	// Get existing user
+	user := models.User{}
+	config := models.QueryConfig{
+		TableName: r.config.DynamoDBTablePrefix + "_users",
+		KeyName:   "id",
+		KeyValue:  userID,
+		KeyType:   models.StringType,
+	}
+
+	err := r.db.GetItem(ctx, config, &user)
+	if err != nil {
+		r.logger.Errorf("Failed to get user by ID: %v", err)
+		return nil, fmt.Errorf("failed to get user by ID: %w", err)
+	}
+
+	if user.ID == "" {
+		return nil, errors.New("user not found")
+	}
+
+	// Get role details from role repository
+	role := models.RoleAssignment{}
+	roleConfig := models.QueryConfig{
+		TableName: r.config.DynamoDBTablePrefix + "_role",
+		KeyName:   "role_id",
+		KeyValue:  roleID,
+		KeyType:   models.StringType,
+	}
+
+	err = r.db.GetItem(ctx, roleConfig, &role)
+	if err != nil {
+		r.logger.Errorf("Failed to get role by ID: %v", err)
+		return nil, errors.New("role not found")
+	}
+
+	if role.RoleID == "" {
+		return nil, errors.New("role not found")
+	}
+
+	// Initialize roles if nil
+	if user.Roles == nil {
+		user.Roles = []models.RoleAssignment{}
+	}
+
+	// Check if user already has this role
+	for _, existingRole := range user.Roles {
+		if existingRole.RoleID == roleID {
+			return nil, errors.New("user already has this role")
+		}
+	}
+
+	// Add role to user with assigned timestamp
+	role.AssignedAt = time.Now()
+	user.Roles = append(user.Roles, role)
+
+	updates := map[string]interface{}{
+		"roles":      user.Roles,
+		"updated_at": time.Now(),
+	}
+
+	err = r.db.UpdateItem(ctx, r.config.DynamoDBTablePrefix+"_users", "id", userID, updates)
+	if err != nil {
+		r.logger.Errorf("Failed to assign role to user: %v", err)
+		return nil, err
+	}
+
+	user.UpdatedAt = time.Now()
+	r.logger.Infof("Role %s assigned successfully to user: %s", roleID, userID)
 	return &user, nil
 }
 
