@@ -101,7 +101,7 @@ func (db *DynamoDBClient) getSingleItemByPrimaryKey(ctx context.Context, config 
 		return err
 	}
 
-	db.logger.Infof("DynamoDB GetItem output: %s", PrintPrettyJSON(output))
+	// db.logger.Infof("DynamoDB GetItem output: %s", PrintPrettyJSON(output))
 
 	if output.Item == nil {
 		return fmt.Errorf("item not found in %s with %s=%s",

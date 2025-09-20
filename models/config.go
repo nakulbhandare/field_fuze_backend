@@ -14,6 +14,12 @@ type Config struct {
 	// JWT
 	JWTSecret    string        `mapstructure:"jwt_secret"`
 	JWTExpiresIn time.Duration `mapstructure:"jwt_expires_in"`
+	
+	// Security & Permission Settings
+	GracefulPermissionDegradation bool `mapstructure:"graceful_permission_degradation"`
+	PermissionCacheTTLSeconds     int  `mapstructure:"permission_cache_ttl_seconds"`
+	StrictRoleValidation          bool `mapstructure:"strict_role_validation"`
+	LogPermissionChanges          bool `mapstructure:"log_permission_changes"`
 
 	// AWS
 	AWSRegion           string `mapstructure:"aws_region"`

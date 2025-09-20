@@ -30,6 +30,15 @@ func NewUserController(ctx context.Context, userRepo *repository.UserRepository,
 	}
 }
 
+// invalidateUserPermissions clears permission cache and logs security events
+func (h *UserController) invalidateUserPermissions(userID, operation string) {
+	// Clear permission cache through JWT manager
+	h.jwtManager.ClearPermissionCache()
+	
+	// Log security event for audit trail
+	h.logger.Infof("SECURITY EVENT: Permission cache cleared for user %s due to %s", userID, operation)
+}
+
 // Register handles POST /api/v1/auth/user/register
 // @Summary Register a new user
 // @Description Create a new user account
@@ -317,8 +326,8 @@ type LoginRequest struct {
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Login failed"
 // @Router /user/login [post]
 func (h *UserController) Login(c *gin.Context) {
-	// This endpoint is handled entirely by the AuthMiddleware
-	// The middleware detects login requests and processes them automatically
+	// Delegate to the JWT manager's login authentication handler
+	h.jwtManager.HandleLogin(c)
 }
 
 // GenerateToken handles POST /api/v1/auth/user/token
@@ -529,6 +538,9 @@ func (h *UserController) AssignRole(c *gin.Context) {
 		return
 	}
 
+	// Clear permission cache for the user after role assignment
+	h.invalidateUserPermissions(userID, "role_assignment")
+
 	c.JSON(http.StatusOK, models.APIResponse{
 		Status:  "success",
 		Code:    http.StatusOK,
@@ -637,6 +649,9 @@ func (h *UserController) DetachRole(c *gin.Context) {
 		})
 		return
 	}
+
+	// Clear permission cache for the user after role removal
+	h.invalidateUserPermissions(userID, "role_removal")
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Status:  "success",
