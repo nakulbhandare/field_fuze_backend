@@ -32,7 +32,7 @@ func NewRoleController(ctx context.Context, roleService *services.RoleService, l
 // formatValidationErrors formats validation errors into readable messages
 func (h *RoleController) formatValidationErrors(err error) string {
 	var errorMessages []string
-	
+
 	if validationErrors, ok := err.(validator.ValidationErrors); ok {
 		for _, fieldError := range validationErrors {
 			switch fieldError.Tag() {
@@ -51,7 +51,7 @@ func (h *RoleController) formatValidationErrors(err error) string {
 			}
 		}
 	}
-	
+
 	return strings.Join(errorMessages, "; ")
 }
 

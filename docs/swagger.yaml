@@ -176,6 +176,12 @@ definitions:
     - UserStatusInactive
     - UserStatusSuspended
     - UserStatusPendingVerification
+  models.WorkerRestartRequest:
+    properties:
+      force:
+        description: Force restart even if worker is currently running
+        type: boolean
+    type: object
 host: localhost:8081
 info:
   contact:
@@ -201,6 +207,138 @@ info:
   title: FieldFuze Backend API
   version: "1.0"
 paths:
+  /infrastructure/worker/auto-restart:
+    post:
+      consumes:
+      - application/json
+      description: Check worker health and automatically restart if unhealthy
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Auto-restart check completed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to auto-restart worker
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Auto-restart worker if needed
+      tags:
+      - Infrastructure
+  /infrastructure/worker/health:
+    get:
+      consumes:
+      - application/json
+      description: Check if the infrastructure worker is healthy and get health details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Worker health check completed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to check worker health
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Check worker health
+      tags:
+      - Infrastructure
+  /infrastructure/worker/restart:
+    post:
+      consumes:
+      - application/json
+      description: Restart the infrastructure worker with optional force parameter
+        to restart even if currently running
+      parameters:
+      - description: Worker restart options
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/models.WorkerRestartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Worker restart initiated successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid restart request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "409":
+          description: Conflict - Worker is running and force=false
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to restart worker
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Restart infrastructure worker
+      tags:
+      - Infrastructure
+  /infrastructure/worker/status:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve detailed status of the infrastructure worker including
+        execution state, progress, and health
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Worker status retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve worker status
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get worker execution status
+      tags:
+      - Infrastructure
   /user/{id}:
     get:
       consumes:

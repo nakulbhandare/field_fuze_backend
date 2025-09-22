@@ -17,8 +17,9 @@ import (
 )
 
 type Controller struct {
-	User *UserController
-	Role *RoleController
+	User           *UserController
+	Role           *RoleController
+	Infrastructure *InfrastructureController
 }
 
 func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *Controller {
@@ -32,10 +33,12 @@ func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *
 	jwtManager := middelware.NewJWTManager(cfg, log, userRepo)
 
 	roleService := services.NewRoleService(roleRepo, log)
+	infraService := services.NewInfrastructureService(ctx, dbclient, log, cfg)
 
 	return &Controller{
-		User: NewUserController(ctx, userRepo, log, jwtManager),
-		Role: NewRoleController(ctx, roleService, log),
+		User:           NewUserController(ctx, userRepo, log, jwtManager),
+		Role:           NewRoleController(ctx, roleService, log),
+		Infrastructure: NewInfrastructureController(ctx, infraService, log),
 	}
 }
 
@@ -48,7 +51,7 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	loggingMiddleware := middelware.NewLoggingMiddleware(logger.NewLogger(config.LogLevel, config.LogFormat))
 	r.Use(loggingMiddleware.StructuredLogger())
 	r.Use(loggingMiddleware.Recovery())
-	
+
 	v1 := r.Group(basePath)
 
 	// Health check endpoint (no auth required)
@@ -84,26 +87,40 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 
 	// Public routes - authentication not required
 	user.POST("/register", c.User.Register)
-	user.POST("/login", c.User.Login)                    // No auth needed - users don't have tokens yet
-	user.POST("/token", c.User.GenerateToken)           // No auth needed - token generation endpoint
-	user.POST("/validate", c.User.ValidateToken)        // No auth needed - validates tokens manually
+	user.POST("/login", c.User.Login)            // No auth needed - users don't have tokens yet
+	user.POST("/token", c.User.GenerateToken)    // No auth needed - token generation endpoint
+	user.POST("/validate", c.User.ValidateToken) // No auth needed - validates tokens manually
 
 	// Protected routes - authentication + enhanced authorization required
 	user.POST("/logout", c.User.jwtManager.AuthMiddleware(), c.User.Logout)
-	user.GET("/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_details"), c.User.GetUser)                          // Resource-specific: user details with context validation
-	user.GET("/list", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_list"), c.User.GetUserList)             // Resource-specific: user list with department scope
-	user.PATCH("/update/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_update"), c.User.UpdateUser)            // Resource-specific: user update with ownership check
-	
+	user.GET("/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_details"), c.User.GetUser)            // Resource-specific: user details with context validation
+	user.GET("/list", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_list"), c.User.GetUserList)          // Resource-specific: user list with department scope
+	user.PATCH("/update/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_update"), c.User.UpdateUser) // Resource-specific: user update with ownership check
+
 	// Role assignment routes - resource-specific permissions with level requirements
-	user.POST("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_assign"), c.User.AssignRole)        // Resource-specific: role assignment with level 7+ requirement
-	user.DELETE("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_assign"), c.User.DetachRole)      // Resource-specific: role assignment with level 7+ requirement
+	user.POST("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_assign"), c.User.AssignRole)   // Resource-specific: role assignment with level 7+ requirement
+	user.DELETE("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_assign"), c.User.DetachRole) // Resource-specific: role assignment with level 7+ requirement
 
 	// Role management routes - resource-specific permissions with context validation
-	user.GET("/role", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_list"), c.Role.GetRoles)          // Resource-specific: role list with department scope
-	user.POST("/role", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_create"), c.Role.CreateRole)     // Resource-specific: role creation with level 6+ requirement
-	user.GET("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_list"), c.Role.GetRole)       // Resource-specific: role details with department scope
-	user.PUT("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_update"), c.Role.UpdateRole)  // Resource-specific: role update with level 6+ requirement
+	user.GET("/role", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_list"), c.Role.GetRoles)            // Resource-specific: role list with department scope
+	user.POST("/role", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_create"), c.Role.CreateRole)       // Resource-specific: role creation with level 6+ requirement
+	user.GET("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_list"), c.Role.GetRole)         // Resource-specific: role details with department scope
+	user.PUT("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_update"), c.Role.UpdateRole)    // Resource-specific: role update with level 6+ requirement
 	user.DELETE("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_delete"), c.Role.DeleteRole) // Resource-specific: role deletion with level 8+ requirement
+
+	// Infrastructure routes (require admin permissions)
+	infra := v1.Group("/infrastructure", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequirePermission("admin"))
+	{
+
+		// Worker-specific management endpoints
+		worker := infra.Group("/worker")
+		{
+			worker.GET("/status", c.Infrastructure.GetWorkerStatus)          // Get worker execution status
+			worker.GET("/health", c.Infrastructure.CheckWorkerHealth)        // Check worker health
+			worker.POST("/restart", c.Infrastructure.RestartWorker)          // Restart worker
+			worker.POST("/auto-restart", c.Infrastructure.AutoRestartWorker) // Auto-restart if unhealthy
+		}
+	}
 
 	// Create HTTP server
 	srv := &http.Server{

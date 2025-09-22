@@ -105,11 +105,30 @@ type LockInfo struct {
 type WorkerStatus string
 
 const (
-	StatusIdle              WorkerStatus = "idle"
+	// Initial states
+	StatusIdle                WorkerStatus = "idle"
+	StatusInitializing       WorkerStatus = "initializing"
+	
+	// Legacy state (keeping for backward compatibility)
 	StatusRunning           WorkerStatus = "running"
+	
+	// Setup phases
+	StatusCreatingTables     WorkerStatus = "creating_tables"
+	StatusWaitingForTables   WorkerStatus = "waiting_for_tables"
+	StatusCreatingIndexes    WorkerStatus = "creating_indexes"
+	StatusWaitingForIndexes  WorkerStatus = "waiting_for_indexes"
+	
+	// Validation phases
+	StatusValidating         WorkerStatus = "validating"
+	StatusFixingIssues       WorkerStatus = "fixing_issues"
+	StatusRevalidating       WorkerStatus = "revalidating"
+	
+	// Terminal states
 	StatusCompleted         WorkerStatus = "completed"
 	StatusFailed            WorkerStatus = "failed"
 	StatusRetrying          WorkerStatus = "retrying"
+	
+	// Deletion states
 	StatusDeletionScheduled WorkerStatus = "deletion_scheduled"
 	StatusDeleting          WorkerStatus = "deleting"
 	StatusDeleted           WorkerStatus = "deleted"
@@ -120,18 +139,71 @@ const (
 type ExecutionResult struct {
 	Success        bool                   `json:"success"`
 	Status         WorkerStatus           `json:"status"`
+	Phase          string                 `json:"phase,omitempty"`          // Current operation phase
 	StartTime      time.Time              `json:"start_time"`
 	EndTime        *time.Time             `json:"end_time,omitempty"`
 	Duration       time.Duration          `json:"duration"`
-	TablesCreated  []string               `json:"tables_created"`
-	IndexesCreated []string               `json:"indexes_created"`
+	
+	// Progress tracking
+	Progress       *ProgressInfo          `json:"progress,omitempty"`
+	
+	// Resource tracking
+	TablesCreated  []TableStatus          `json:"tables_created"`
+	IndexesCreated []IndexStatus          `json:"indexes_created"`
+	
+	// Error handling
 	ErrorMessage   string                 `json:"error_message,omitempty"`
+	LastError      *ErrorInfo             `json:"last_error,omitempty"`
 	RetryCount     int                    `json:"retry_count"`
+	
+	// Context
 	Environment    string                 `json:"environment"`
 	Metadata       map[string]interface{} `json:"metadata"`
+	
+	// Health indicators
+	HealthStatus   string                 `json:"health_status,omitempty"`   // healthy, degraded, unhealthy, provisioning
+	NextAction     string                 `json:"next_action,omitempty"`     // What will happen next
+	EstimatedTime  *time.Duration         `json:"estimated_time,omitempty"`  // Estimated completion time
 }
 
-// TableInfo represents table creation information
+// ProgressInfo tracks execution progress
+type ProgressInfo struct {
+	CurrentStep    int    `json:"current_step"`
+	TotalSteps     int    `json:"total_steps"`
+	StepName       string `json:"step_name"`
+	Percentage     int    `json:"percentage"`
+}
+
+// TableStatus represents enhanced table status information
+type TableStatus struct {
+	Name           string    `json:"name"`
+	Status         string    `json:"status"`         // CREATING, ACTIVE, FAILED
+	CreatedAt      time.Time `json:"created_at"`
+	BecameActiveAt *time.Time `json:"became_active_at,omitempty"`
+	IndexCount     int       `json:"index_count"`
+	ExpectedIndexes int      `json:"expected_indexes"`
+	Indexes        []IndexStatus `json:"indexes,omitempty"`
+	BillingMode    string    `json:"billing_mode,omitempty"`
+	Tags           map[string]string `json:"tags,omitempty"`
+}
+
+// IndexStatus represents index creation status
+type IndexStatus struct {
+	Name      string    `json:"name"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ErrorInfo provides structured error information
+type ErrorInfo struct {
+	Code        string    `json:"code"`         // ERROR_TABLE_NOT_ACTIVE, ERROR_INDEX_MISSING
+	Message     string    `json:"message"`
+	Timestamp   time.Time `json:"timestamp"`
+	Recoverable bool      `json:"recoverable"`
+	RetryAfter  *time.Duration `json:"retry_after,omitempty"`
+}
+
+// TableInfo represents table creation information (legacy, keeping for compatibility)
 type TableInfo struct {
 	Name        string            `json:"name"`
 	Status      string            `json:"status"`

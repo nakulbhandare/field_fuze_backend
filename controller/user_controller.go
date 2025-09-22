@@ -34,7 +34,7 @@ func NewUserController(ctx context.Context, userRepo *repository.UserRepository,
 func (h *UserController) invalidateUserPermissions(userID, operation string) {
 	// Clear permission cache through JWT manager
 	h.jwtManager.ClearPermissionCache()
-	
+
 	// Log security event for audit trail
 	h.logger.Infof("SECURITY EVENT: Permission cache cleared for user %s due to %s", userID, operation)
 }

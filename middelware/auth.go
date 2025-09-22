@@ -809,7 +809,7 @@ func (j *JWTManager) invalidateUserPermissionCache(roles []models.RoleAssignment
 	if len(roles) == 0 {
 		return
 	}
-	
+
 	// Extract user identifier from roles context
 	userContext := ""
 	for _, role := range roles {
@@ -818,7 +818,7 @@ func (j *JWTManager) invalidateUserPermissionCache(roles []models.RoleAssignment
 			break
 		}
 	}
-	
+
 	if userContext == "" {
 		// Fallback: clear cache entries containing any of the role IDs
 		for _, role := range roles {
@@ -826,7 +826,7 @@ func (j *JWTManager) invalidateUserPermissionCache(roles []models.RoleAssignment
 		}
 		return
 	}
-	
+
 	// Clear cache entries for this specific user
 	j.invalidateCacheEntriesContaining(userContext)
 }
@@ -839,7 +839,7 @@ func (j *JWTManager) invalidateCacheEntriesContaining(keyFragment string) {
 		}
 		return true
 	})
-	
+
 	if j.Config.LogPermissionChanges {
 		j.Logger.Debug("Invalidated permission cache entries containing: %s", keyFragment)
 	}
@@ -935,7 +935,7 @@ func (j *JWTManager) ValidateToken(tokenString string) (*models.JWTClaims, error
 			j.Logger.Errorf("Role validation failed for %s: %v", claims.UserID, err)
 			return nil, err
 		}
-		
+
 		// Update claims with current valid roles (real-time permissions)
 		if j.Config.GracefulPermissionDegradation {
 			claims.Roles = currentValidRoles
@@ -1633,19 +1633,19 @@ func (j *JWTManager) RequireResourcePermission(resourceName string) gin.HandlerF
 		// Log authorization attempt for security monitoring
 		j.Logger.Infof("Authorization attempt: User %s requesting resource %s (requires %s)",
 			jwtClaims.UserID, resourceName, requiredPermission)
-		
+
 		// DEBUG: Log user's current roles and permissions
 		j.Logger.Infof("DEBUG: User %s has %d roles:", jwtClaims.UserID, len(jwtClaims.Roles))
 		for i, role := range jwtClaims.Roles {
-			j.Logger.Infof("DEBUG: Role %d - ID: %s, Name: %s, Level: %d, Permissions: %v, Context: %v", 
+			j.Logger.Infof("DEBUG: Role %d - ID: %s, Name: %s, Level: %d, Permissions: %v, Context: %v",
 				i+1, role.RoleID, role.RoleName, role.Level, role.Permissions, role.Context)
 		}
 
 		// Check if user has a role that specifically grants access to this resource
 		hasValidRoleForResource := j.hasValidRoleForResource(jwtClaims.Roles, resourceName, requiredPermission)
-		j.Logger.Infof("DEBUG: Role validation result for user %s accessing resource %s: %t", 
+		j.Logger.Infof("DEBUG: Role validation result for user %s accessing resource %s: %t",
 			jwtClaims.UserID, resourceName, hasValidRoleForResource)
-			
+
 		if !hasValidRoleForResource {
 			// Log detailed failure for security analysis
 			j.Logger.Errorf("AUTHORIZATION DENIED: User %s does not have a valid role for resource %s. User roles: %v",
@@ -1805,7 +1805,7 @@ func (j *JWTManager) extractUserContext(roles []models.RoleAssignment) (string, 
 // hasValidRoleForResource checks if user has a valid role that grants access to the specific resource
 func (j *JWTManager) hasValidRoleForResource(roles []models.RoleAssignment, resourceName, requiredPermission string) bool {
 	now := time.Now()
-	
+
 	// Get resource configuration to check resource type
 	resourceConfig, exists := j.resourceMapping.Load(resourceName)
 	if !exists {
@@ -1813,16 +1813,16 @@ func (j *JWTManager) hasValidRoleForResource(roles []models.RoleAssignment, reso
 		// Fallback to simple permission check if resource config not found
 		return j.hasPermission(roles, requiredPermission)
 	}
-	
+
 	config := resourceConfig.(map[string]interface{})
 	expectedResourceType, hasResourceType := config["resource_type"].(string)
-	
+
 	for _, role := range roles {
 		// Skip expired roles
 		if role.ExpiresAt != nil && role.ExpiresAt.Before(now) {
 			continue
 		}
-		
+
 		// Check if this role has the required permission
 		hasPermission := false
 		for _, permission := range role.Permissions {
@@ -1831,11 +1831,11 @@ func (j *JWTManager) hasValidRoleForResource(roles []models.RoleAssignment, reso
 				break
 			}
 		}
-		
+
 		if !hasPermission {
 			continue
 		}
-		
+
 		// If resource type is specified in config, check if role context matches
 		if hasResourceType {
 			// Check if role context contains the expected resource type
@@ -1853,10 +1853,9 @@ func (j *JWTManager) hasValidRoleForResource(roles []models.RoleAssignment, reso
 			return true
 		}
 	}
-	
+
 	return false
 }
-
 
 // hasAdminPermission checks if permissions include admin access
 func (j *JWTManager) hasAdminPermission(permissions []string) bool {

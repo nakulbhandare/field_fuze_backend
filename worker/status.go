@@ -101,8 +101,8 @@ func (sm *StatusManager) UpdateProgress(status models.WorkerStatus, message stri
 		// Create new status if loading fails
 		currentStatus = &models.ExecutionResult{
 			StartTime:      time.Now(),
-			TablesCreated:  make([]string, 0),
-			IndexesCreated: make([]string, 0),
+			TablesCreated:  make([]models.TableStatus, 0),
+			IndexesCreated: make([]models.IndexStatus, 0),
 			Metadata:       make(map[string]any),
 		}
 	}
@@ -138,12 +138,17 @@ func (sm *StatusManager) AddTableCreated(tableName string) error {
 
 	// Check if table already in list
 	for _, table := range status.TablesCreated {
-		if table == tableName {
+		if table.Name == tableName {
 			return nil // Already recorded
 		}
 	}
 
-	status.TablesCreated = append(status.TablesCreated, tableName)
+	tableStatus := models.TableStatus{
+		Name:      tableName,
+		Status:    "CREATING",
+		CreatedAt: time.Now(),
+	}
+	status.TablesCreated = append(status.TablesCreated, tableStatus)
 	return sm.SaveStatus(status)
 }
 
@@ -156,12 +161,17 @@ func (sm *StatusManager) AddIndexCreated(indexName string) error {
 
 	// Check if index already in list
 	for _, index := range status.IndexesCreated {
-		if index == indexName {
+		if index.Name == indexName {
 			return nil // Already recorded
 		}
 	}
 
-	status.IndexesCreated = append(status.IndexesCreated, indexName)
+	indexStatus := models.IndexStatus{
+		Name:      indexName,
+		Status:    "CREATING",
+		CreatedAt: time.Now(),
+	}
+	status.IndexesCreated = append(status.IndexesCreated, indexStatus)
 	return sm.SaveStatus(status)
 }
 

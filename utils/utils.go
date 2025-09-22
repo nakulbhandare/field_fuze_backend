@@ -92,7 +92,7 @@ func setDefaults(v *viper.Viper) {
 	// JWT defaults
 	v.SetDefault("jwt_secret", "your-super-secret-jwt-key-change-this-in-production")
 	v.SetDefault("jwt_expires_in", 30*time.Minute) // Shorter token expiration for better security
-	
+
 	// Security & Permission defaults
 	v.SetDefault("graceful_permission_degradation", true)
 	v.SetDefault("permission_cache_ttl_seconds", 30)
@@ -169,7 +169,7 @@ func flattenNestedConfig(v *viper.Viper) {
 	if v.IsSet("jwt.expires_in") {
 		v.Set("jwt_expires_in", v.GetString("jwt.expires_in"))
 	}
-	
+
 	// Security section
 	if v.IsSet("security.graceful_permission_degradation") {
 		v.Set("graceful_permission_degradation", v.GetBool("security.graceful_permission_degradation"))

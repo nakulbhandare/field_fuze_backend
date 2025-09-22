@@ -383,11 +383,12 @@ func (w *Worker) executeSetupJobInternal(ctx context.Context) {
 	// Step 1: Check if already completed
 	if completed, err := statusManager.IsSetupCompleted(); err != nil {
 		if strings.Contains(err.Error(), "no such file or directory") {
+			w.Worker.Logger.Debug("Status file not found, proceeding with setup")
+		} else {
 			w.Worker.Logger.Errorf("Failed to check completion status: %v", err)
-			fmt.Println("Continuing ..................")
 		}
 	} else if completed && !w.Worker.WorkerConfig.ForceRecreate {
-		w.Worker.Logger.Info("Infrastructure setup already completed, stopping worker")
+		w.Worker.Logger.Info("Infrastructure setup already completed successfully, skipping execution")
 		if !w.Worker.WorkerConfig.RunOnce {
 			w.Stop()
 		}
@@ -617,8 +618,8 @@ func (w *Worker) executeSetupWithErrorHandling(ctx context.Context) error {
 		StartTime:      time.Now(),
 		Status:         models.StatusRunning,
 		Environment:    w.Worker.Config.AppEnv,
-		TablesCreated:  make([]string, 0),
-		IndexesCreated: make([]string, 0),
+		TablesCreated:  make([]models.TableStatus, 0),
+		IndexesCreated: make([]models.IndexStatus, 0),
 		Metadata:       make(map[string]any),
 	}
 
