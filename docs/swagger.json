@@ -224,6 +224,63 @@
                 }
             }
         },
+        "/organization": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new organization with specified details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization Management"
+                ],
+                "summary": "Create a new organization",
+                "parameters": [
+                    {
+                        "description": "Create organization request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Organization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Organization created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid organization data",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict - Organization already exists",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Organization creation failed",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/list": {
             "get": {
                 "security": [
@@ -363,6 +420,60 @@
                     },
                     "500": {
                         "description": "Internal Server Error - Logout failed",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/organization": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all organizations",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization Management"
+                ],
+                "summary": "Get all organizations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number for pagination",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of organizations per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by organization status (active, inactive, archived)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Organizations retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve organizations",
                         "schema": {
                             "$ref": "#/definitions/models.APIResponse"
                         }
@@ -1133,6 +1244,102 @@
                     "type": "string"
                 }
             }
+        },
+        "models.Organization": {
+            "type": "object",
+            "required": [
+                "created_by",
+                "name",
+                "status"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "city": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 2
+                },
+                "country": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 2
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "industry": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 2
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 2
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "postal_code": {
+                    "description": "Business details",
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 3
+                },
+                "state": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 2
+                },
+                "status": {
+                    "enum": [
+                        "active",
+                        "inactive",
+                        "suspended"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.OrganizationStatus"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "description": "Contact information",
+                    "type": "string"
+                }
+            }
+        },
+        "models.OrganizationStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "inactive",
+                "suspended"
+            ],
+            "x-enum-varnames": [
+                "OrganizationStatusActive",
+                "OrganizationStatusInactive",
+                "OrganizationStatusSuspended"
+            ]
         },
         "models.RegisterUser": {
             "description": "User registration request with account details",

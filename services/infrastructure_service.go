@@ -15,12 +15,12 @@ import (
 
 type InfrastructureService struct {
 	ctx      context.Context
-	dbClient *dal.DynamoDBClient
+	dbClient dal.DatabaseClientInterface
 	logger   logger.Logger
 	config   *models.Config
 }
 
-func NewInfrastructureService(ctx context.Context, dbClient *dal.DynamoDBClient, logger logger.Logger, config *models.Config) *InfrastructureService {
+func NewInfrastructureService(ctx context.Context, dbClient dal.DatabaseClientInterface, logger logger.Logger, config *models.Config) *InfrastructureService {
 	return &InfrastructureService{
 		ctx:      ctx,
 		dbClient: dbClient,

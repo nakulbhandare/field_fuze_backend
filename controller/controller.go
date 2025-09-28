@@ -23,22 +23,26 @@ type Controller struct {
 }
 
 func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *Controller {
-	dbclient, err := dal.NewDynamoDBClient(cfg, log)
+	// Initialize DAL container
+	dalContainer, err := dal.NewDALContainer(cfg, log)
 	if err != nil {
-		log.Fatalf("Failed to initialize DynamoDB client: %v", err)
+		log.Fatalf("Failed to initialize DAL container: %v", err)
 	}
 
-	userRepo := repository.NewUserRepository(dbclient, cfg, log)
-	roleRepo := repository.NewRoleRepository(dbclient, cfg, log)
+	// Initialize repository container
+	repoContainer := repository.NewRepository(dalContainer, cfg, log)
+
+	// Initialize service container
+	serviceContainer := services.NewService(ctx, repoContainer, dalContainer, log, cfg)
+
+	// JWT Manager still needs concrete user repository for authentication
+	userRepo := repository.NewUserRepository(dalContainer.GetDatabaseClient(), cfg, log)
 	jwtManager := middelware.NewJWTManager(cfg, log, userRepo)
 
-	roleService := services.NewRoleService(roleRepo, log)
-	infraService := services.NewInfrastructureService(ctx, dbclient, log, cfg)
-
 	return &Controller{
-		User:           NewUserController(ctx, userRepo, log, jwtManager),
-		Role:           NewRoleController(ctx, roleService, log),
-		Infrastructure: NewInfrastructureController(ctx, infraService, log),
+		User:           NewUserController(ctx, serviceContainer.GetUserService(), log, jwtManager),
+		Role:           NewRoleController(ctx, serviceContainer.GetRoleService(), log),
+		Infrastructure: NewInfrastructureController(ctx, serviceContainer.GetInfrastructureService(), log),
 	}
 }
 

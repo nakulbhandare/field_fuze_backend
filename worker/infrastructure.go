@@ -56,7 +56,7 @@ func (is *InfrastructureSetup) Execute(ctx context.Context, statusManager *Statu
 	// Check if all tables already exist and are active
 	allTablesExist := true
 	var existingTables []string
-	
+
 	for _, tableInfo := range tableDetails {
 		exists, err := is.tableExists(tableInfo.Name)
 		if err != nil {
@@ -64,7 +64,7 @@ func (is *InfrastructureSetup) Execute(ctx context.Context, statusManager *Statu
 			allTablesExist = false
 			break
 		}
-		
+
 		if exists {
 			existingTables = append(existingTables, tableInfo.Name)
 			statusManager.AddTableCreated(tableInfo.Name)
@@ -76,29 +76,29 @@ func (is *InfrastructureSetup) Execute(ctx context.Context, statusManager *Statu
 	// If all tables exist, validate and handle accordingly
 	if allTablesExist {
 		is.InfrastructureSetup.Logger.Info("All required tables already exist, validating infrastructure...")
-		
+
 		if err := is.validateInfrastructure(ctx, tableDetails); err != nil {
 			is.InfrastructureSetup.Logger.Errorf("Infrastructure validation failed: %v", err)
-			
+
 			// Handle validation failure - attempt to fix or recreate
 			if err := is.handleValidationFailure(ctx, tableDetails, statusManager, err); err != nil {
 				is.InfrastructureSetup.Logger.Errorf("Failed to handle validation failure: %v", err)
 				statusManager.MarkFailed(fmt.Sprintf("Infrastructure validation failed and could not be fixed: %v", err))
 				return err
 			}
-			
+
 			// After handling failure, re-validate to ensure it's fixed
 			if err := is.validateInfrastructure(ctx, tableDetails); err != nil {
 				is.InfrastructureSetup.Logger.Errorf("Infrastructure still invalid after fix attempt: %v", err)
 				statusManager.MarkFailed(fmt.Sprintf("Infrastructure validation failed after fix attempt: %v", err))
 				return err
 			}
-			
+
 			is.InfrastructureSetup.Logger.Info("✅ Infrastructure validation issues resolved successfully")
 		} else {
 			is.InfrastructureSetup.Logger.Info("✅ Infrastructure already exists and is valid")
 		}
-		
+
 		return statusManager.MarkCompleted()
 	}
 
@@ -410,13 +410,13 @@ func (is *InfrastructureSetup) waitForTablesDeleted(ctx context.Context, tables 
 // validateInfrastructure validates the created infrastructure with intelligent waiting
 func (is *InfrastructureSetup) validateInfrastructure(ctx context.Context, tables []*models.TableInfo) error {
 	is.InfrastructureSetup.Logger.Info("Starting intelligent infrastructure validation...")
-	
+
 	// Phase 1: Wait for tables to become active
 	if err := is.waitForTablesActive(ctx, tables); err != nil {
 		return fmt.Errorf("tables did not become active: %w", err)
 	}
-	
-	// Phase 2: Validate table configuration  
+
+	// Phase 2: Validate table configuration
 	return is.validateTableConfiguration(ctx, tables)
 }
 
@@ -424,38 +424,38 @@ func (is *InfrastructureSetup) validateInfrastructure(ctx context.Context, table
 func (is *InfrastructureSetup) waitForTablesActive(ctx context.Context, tables []*models.TableInfo) error {
 	maxWait := 10 * time.Minute
 	checkInterval := 15 * time.Second
-	
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, maxWait)
 	defer cancel()
-	
+
 	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
-	
+
 	is.InfrastructureSetup.Logger.Info("Waiting for DynamoDB tables to become active...")
-	
+
 	for {
 		allActive := true
 		var pendingTables []string
-		
+
 		for _, table := range tables {
 			desc, err := is.InfrastructureSetup.DBClient.DescribeTable(ctx, table.Name)
 			if err != nil {
 				return fmt.Errorf("failed to describe table %s: %w", table.Name, err)
 			}
-			
+
 			if desc.Table.TableStatus != "ACTIVE" {
 				allActive = false
 				pendingTables = append(pendingTables, fmt.Sprintf("%s(%s)", table.Name, desc.Table.TableStatus))
 			}
 		}
-		
+
 		if allActive {
 			is.InfrastructureSetup.Logger.Info("All tables are now ACTIVE")
 			return nil
 		}
-		
+
 		is.InfrastructureSetup.Logger.Infof("Waiting for tables to become active: %v", pendingTables)
-		
+
 		select {
 		case <-timeoutCtx.Done():
 			return fmt.Errorf("timeout waiting for tables to become active after %v: %v", maxWait, pendingTables)
@@ -499,7 +499,7 @@ func (is *InfrastructureSetup) validateTableConfiguration(ctx context.Context, t
 // by attempting to fix issues or recreating problematic tables
 func (is *InfrastructureSetup) handleValidationFailure(ctx context.Context, tableDetails []*models.TableInfo, statusManager *StatusManager, validationErr error) error {
 	is.InfrastructureSetup.Logger.Warnf("Handling infrastructure validation failure: %v", validationErr)
-	
+
 	// Update status to indicate we're fixing validation issues
 	if err := statusManager.UpdateProgress(models.StatusRunning, "Fixing infrastructure validation issues", map[string]any{
 		"validation_error": validationErr.Error(),
@@ -507,39 +507,39 @@ func (is *InfrastructureSetup) handleValidationFailure(ctx context.Context, tabl
 	}); err != nil {
 		is.InfrastructureSetup.Logger.Errorf("Failed to update status: %v", err)
 	}
-	
+
 	// Try to identify and fix specific validation issues
 	for _, tableInfo := range tableDetails {
 		if err := is.validateAndFixTable(ctx, tableInfo, nil); err != nil {
 			is.InfrastructureSetup.Logger.Errorf("Failed to validate/fix table %s: %v", tableInfo.Name, err)
-			
+
 			// If we can't fix the table, try to recreate it
 			is.InfrastructureSetup.Logger.Warnf("Attempting to recreate table %s due to validation failure", tableInfo.Name)
-			
+
 			// Delete the problematic table
 			if err := is.deleteTableWithRetry(ctx, tableInfo.Name, nil); err != nil {
 				is.InfrastructureSetup.Logger.Errorf("Failed to delete problematic table %s: %v", tableInfo.Name, err)
 				return fmt.Errorf("failed to delete problematic table %s: %w", tableInfo.Name, err)
 			}
-			
+
 			// Wait for table to be fully deleted
 			if err := is.waitForTableDeleted(ctx, tableInfo.Name); err != nil {
 				is.InfrastructureSetup.Logger.Errorf("Table %s failed to delete completely: %v", tableInfo.Name, err)
 				return fmt.Errorf("table %s failed to delete: %w", tableInfo.Name, err)
 			}
-			
+
 			// Recreate the table
 			if err := is.createTableWithRetry(ctx, tableInfo); err != nil {
 				is.InfrastructureSetup.Logger.Errorf("Failed to recreate table %s: %v", tableInfo.Name, err)
 				return fmt.Errorf("failed to recreate table %s: %w", tableInfo.Name, err)
 			}
-			
+
 			// Record successful table recreation
 			statusManager.AddTableCreated(tableInfo.Name)
 			is.InfrastructureSetup.Logger.Infof("✅ Successfully recreated table: %s", tableInfo.Name)
 		}
 	}
-	
+
 	is.InfrastructureSetup.Logger.Info("Infrastructure validation failure handling completed")
 	return nil
 }
@@ -547,27 +547,27 @@ func (is *InfrastructureSetup) handleValidationFailure(ctx context.Context, tabl
 // validateAndFixTable validates a specific table and attempts to fix issues
 func (is *InfrastructureSetup) validateAndFixTable(ctx context.Context, tableInfo *models.TableInfo, _ *StatusManager) error {
 	is.InfrastructureSetup.Logger.Debugf("Validating table: %s", tableInfo.Name)
-	
+
 	// Check table status
 	desc, err := is.InfrastructureSetup.DBClient.DescribeTable(ctx, tableInfo.Name)
 	if err != nil {
 		return fmt.Errorf("table %s describe failed: %w", tableInfo.Name, err)
 	}
-	
+
 	// Check if table is active
 	if desc.Table.TableStatus != "ACTIVE" {
 		is.InfrastructureSetup.Logger.Warnf("Table %s is not active: %s", tableInfo.Name, desc.Table.TableStatus)
-		
+
 		// Wait for table to become active (up to 5 minutes)
 		timeout := 5 * time.Minute
 		checkInterval := 10 * time.Second
-		
+
 		timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		
+
 		ticker := time.NewTicker(checkInterval)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-timeoutCtx.Done():
@@ -577,26 +577,26 @@ func (is *InfrastructureSetup) validateAndFixTable(ctx context.Context, tableInf
 				if err != nil {
 					return fmt.Errorf("failed to check table %s status: %w", tableInfo.Name, err)
 				}
-				
+
 				if desc.Table.TableStatus == "ACTIVE" {
 					is.InfrastructureSetup.Logger.Infof("Table %s is now active", tableInfo.Name)
 					goto checkIndexes
 				}
-				
+
 				is.InfrastructureSetup.Logger.Debugf("Table %s status: %s (waiting for ACTIVE)", tableInfo.Name, desc.Table.TableStatus)
 			}
 		}
 	}
-	
+
 checkIndexes:
 	// Verify indexes match expected count
 	expectedIndexes := tableInfo.IndexCount
 	actualIndexes := len(desc.Table.GlobalSecondaryIndexes)
-	
+
 	if actualIndexes != expectedIndexes {
 		return fmt.Errorf("table %s has %d indexes, expected %d", tableInfo.Name, actualIndexes, expectedIndexes)
 	}
-	
+
 	is.InfrastructureSetup.Logger.Debugf("Table %s validation passed", tableInfo.Name)
 	return nil
 }
@@ -605,13 +605,13 @@ checkIndexes:
 func (is *InfrastructureSetup) waitForTableDeleted(ctx context.Context, tableName string) error {
 	timeout := 10 * time.Minute
 	checkInterval := 10 * time.Second
-	
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	
+
 	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
-	
+
 	// First, do an immediate check
 	exists, err := is.tableExists(tableName)
 	if err != nil {
@@ -620,7 +620,7 @@ func (is *InfrastructureSetup) waitForTableDeleted(ctx context.Context, tableNam
 		is.InfrastructureSetup.Logger.Infof("Table %s has been deleted", tableName)
 		return nil
 	}
-	
+
 	// If still exists, continue with polling
 	for {
 		select {
@@ -632,12 +632,12 @@ func (is *InfrastructureSetup) waitForTableDeleted(ctx context.Context, tableNam
 				is.InfrastructureSetup.Logger.Errorf("Failed to check table %s existence: %v", tableName, err)
 				continue
 			}
-			
+
 			if !exists {
 				is.InfrastructureSetup.Logger.Infof("Table %s has been deleted", tableName)
 				return nil
 			}
-			
+
 			is.InfrastructureSetup.Logger.Debugf("Table %s still exists, waiting for deletion", tableName)
 		}
 	}

@@ -118,5 +118,105 @@
                 }
             }
         ]
-    }
+    },
+     "organization": {
+      "AttributeDefinitions": [
+          {
+              "AttributeName": "id",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "name",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "status",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "created_by",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "email",
+              "AttributeType": "S"
+          }
+      ],
+      "KeySchema": [
+          {
+              "AttributeName": "id",
+              "KeyType": "HASH"
+          }
+      ],
+      "ProvisionedThroughput": {
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
+      },
+      "GlobalSecondaryIndexes": [
+          {
+              "IndexName": "name-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "name",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "status-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "status",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "created-by-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "created_by",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "email-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "email",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          }
+      ]
+  }
 }

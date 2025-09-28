@@ -14,13 +14,14 @@ import (
 	"fieldfuze-backend/utils/logger"
 )
 
+// RoleRepository implements RoleRepositoryInterface
 type RoleRepository struct {
-	db     *dal.DynamoDBClient
+	db     dal.DatabaseClientInterface
 	config *models.Config
 	logger logger.Logger
 }
 
-func NewRoleRepository(db *dal.DynamoDBClient, cfg *models.Config, log logger.Logger) *RoleRepository {
+func NewRoleRepository(db dal.DatabaseClientInterface, cfg *models.Config, log logger.Logger) *RoleRepository {
 	return &RoleRepository{
 		db:     db,
 		config: cfg,

@@ -14,11 +14,11 @@ import (
 
 type InfrastructureController struct {
 	ctx     context.Context
-	service *services.InfrastructureService
+	service services.InfrastructureServiceInterface
 	logger  logger.Logger
 }
 
-func NewInfrastructureController(ctx context.Context, service *services.InfrastructureService, logger logger.Logger) *InfrastructureController {
+func NewInfrastructureController(ctx context.Context, service services.InfrastructureServiceInterface, logger logger.Logger) *InfrastructureController {
 	return &InfrastructureController{
 		ctx:     ctx,
 		service: service,

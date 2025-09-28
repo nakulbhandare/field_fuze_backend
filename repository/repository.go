@@ -3,16 +3,31 @@ package repository
 import (
 	"fieldfuze-backend/dal"
 	"fieldfuze-backend/models"
-
-	"github.com/bytedance/gopkg/util/logger"
+	"fieldfuze-backend/utils/logger"
 )
 
+// Repository implements RepositoryContainerInterface
 type Repository struct {
-	User *UserRepository
+	userRepository UserRepositoryInterface
+	roleRepository RoleRepositoryInterface
 }
 
-func NewRepository(db *dal.DynamoDBClient, cfg *models.Config, log logger.Logger) *Repository {
+// NewRepository creates a new repository container with all dependencies injected
+func NewRepository(dalContainer dal.DALContainerInterface, cfg *models.Config, log logger.Logger) RepositoryContainerInterface {
+	dbClient := dalContainer.GetDatabaseClient()
+	
 	return &Repository{
-		User: NewUserRepository(db, cfg, log),
+		userRepository: NewUserRepository(dbClient, cfg, log),
+		roleRepository: NewRoleRepository(dbClient, cfg, log),
 	}
+}
+
+// GetUserRepository returns the user repository interface
+func (r *Repository) GetUserRepository() UserRepositoryInterface {
+	return r.userRepository
+}
+
+// GetRoleRepository returns the role repository interface
+func (r *Repository) GetRoleRepository() RoleRepositoryInterface {
+	return r.roleRepository
 }

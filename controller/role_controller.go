@@ -15,12 +15,12 @@ import (
 
 type RoleController struct {
 	ctx         context.Context
-	roleService *services.RoleService
+	roleService services.RoleServiceInterface
 	logger      logger.Logger
 	validator   *validator.Validate
 }
 
-func NewRoleController(ctx context.Context, roleService *services.RoleService, logger logger.Logger) *RoleController {
+func NewRoleController(ctx context.Context, roleService services.RoleServiceInterface, logger logger.Logger) *RoleController {
 	return &RoleController{
 		ctx:         ctx,
 		roleService: roleService,

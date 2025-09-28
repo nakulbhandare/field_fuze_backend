@@ -14,14 +14,15 @@ import (
 	"fieldfuze-backend/utils/logger"
 )
 
+// UserRepository implements UserRepositoryInterface
 type UserRepository struct {
-	db     *dal.DynamoDBClient
+	db     dal.DatabaseClientInterface
 	config *models.Config
 	logger logger.Logger
 }
 
 // NewUserRepository creates a new user repository
-func NewUserRepository(db *dal.DynamoDBClient, cfg *models.Config, log logger.Logger) *UserRepository {
+func NewUserRepository(db dal.DatabaseClientInterface, cfg *models.Config, log logger.Logger) *UserRepository {
 	return &UserRepository{
 		db:     db,
 		config: cfg,
