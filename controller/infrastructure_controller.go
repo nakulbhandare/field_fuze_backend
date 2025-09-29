@@ -287,7 +287,14 @@ func (h *InfrastructureController) getStatusMessage(ws *models.ExecutionResult) 
 		return "Re-validating infrastructure after fixes"
 		
 	case models.StatusRetrying:
-		return fmt.Sprintf("Retrying infrastructure setup (attempt %d)", ws.RetryCount+1)
+		// Extract retry count from metadata
+		retryCount := 0
+		if ws.Metadata != nil {
+			if rc, ok := ws.Metadata["retry_count"].(int); ok {
+				retryCount = rc
+			}
+		}
+		return fmt.Sprintf("Retrying infrastructure setup (attempt %d)", retryCount+1)
 		
 	case models.StatusInitializing:
 		return "Initializing infrastructure worker"

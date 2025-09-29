@@ -149,12 +149,10 @@ type ExecutionResult struct {
 	
 	// Resource tracking
 	TablesCreated  []TableStatus          `json:"tables_created"`
-	IndexesCreated []IndexStatus          `json:"indexes_created"`
 	
 	// Error handling
 	ErrorMessage   string                 `json:"error_message,omitempty"`
 	LastError      *ErrorInfo             `json:"last_error,omitempty"`
-	RetryCount     int                    `json:"retry_count"`
 	
 	// Context
 	Environment    string                 `json:"environment"`
@@ -176,21 +174,31 @@ type ProgressInfo struct {
 
 // TableStatus represents enhanced table status information
 type TableStatus struct {
-	Name           string    `json:"name"`
-	Status         string    `json:"status"`         // CREATING, ACTIVE, FAILED
-	CreatedAt      time.Time `json:"created_at"`
-	BecameActiveAt *time.Time `json:"became_active_at,omitempty"`
-	IndexCount     int       `json:"index_count"`
-	ExpectedIndexes int      `json:"expected_indexes"`
-	Indexes        []IndexStatus `json:"indexes,omitempty"`
-	BillingMode    string    `json:"billing_mode,omitempty"`
+	Name           string         `json:"name"`
+	Status         string         `json:"status"`         // CREATING, ACTIVE, FAILED
+	Arn            string         `json:"arn"`            // Table ARN from AWS
+	CreatedAt      time.Time      `json:"created_at"`
+	BecameActiveAt *time.Time     `json:"became_active_at,omitempty"`
+	IndexCount     int            `json:"index_count"`
+	IndexesCreated []IndexDetails `json:"indexes_created"`
+	BillingMode    string         `json:"billing_mode,omitempty"`
 	Tags           map[string]string `json:"tags,omitempty"`
 }
 
-// IndexStatus represents index creation status
+// IndexStatus represents index creation status (legacy - no longer used)
+// Kept for backward compatibility. Use IndexDetails instead.
 type IndexStatus struct {
 	Name      string    `json:"name"`
 	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// IndexDetails represents detailed index information with ARN
+type IndexDetails struct {
+	Name      string    `json:"name"`
+	Status    string    `json:"status"`
+	Arn       string    `json:"arn"`
+	Type      string    `json:"type"`      // GSI or LSI
 	CreatedAt time.Time `json:"created_at"`
 }
 

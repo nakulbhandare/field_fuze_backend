@@ -61,15 +61,18 @@ func NewWorker(ctx context.Context, cfg *models.Config, log logger.Logger) (*mod
 		return nil, fmt.Errorf("invalid worker configuration: %w", err)
 	}
 
-	// Initialize components
-	lockManager := NewLockManager(workerConfig.LockFilePath, workerConfig.LockTimeout, workerConfig.Environment)
-	statusManager := NewStatusManager(workerConfig.StatusFilePath)
-
-	// Create infrastructure setup handler
+	// Create infrastructure setup handler first (needed for DB client)
 	infrastructureSetup, err := NewInfrastructureSetup(cfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create infrastructure setup: %w", err)
 	}
+
+	// Initialize components with enhanced status manager
+	lockManager := NewLockManager(workerConfig.LockFilePath, workerConfig.LockTimeout, workerConfig.Environment)
+	// Create enhanced status manager with AWS integration for real-time status tracking
+	statusManager := NewStatusManager(workerConfig.StatusFilePath, infrastructureSetup.InfrastructureSetup.DBClient, log)
+	
+	log.Info("Enhanced infrastructure worker initialized with lightweight AWS status tracking")
 
 	// Create cron job with second precision
 	cronJob := cron.New()
@@ -615,12 +618,11 @@ func (w *Worker) executeSetupWithErrorHandling(ctx context.Context) error {
 
 	// Initialize execution result
 	result := &models.ExecutionResult{
-		StartTime:      time.Now(),
-		Status:         models.StatusRunning,
-		Environment:    w.Worker.Config.AppEnv,
-		TablesCreated:  make([]models.TableStatus, 0),
-		IndexesCreated: make([]models.IndexStatus, 0),
-		Metadata:       make(map[string]any),
+		StartTime:     time.Now(),
+		Status:        models.StatusRunning,
+		Environment:   w.Worker.Config.AppEnv,
+		TablesCreated: make([]models.TableStatus, 0),
+		Metadata:      make(map[string]any),
 	}
 
 	statusManager := &StatusManager{StatusManager: *w.Worker.StatusManager}
@@ -656,14 +658,15 @@ func (w *Worker) executeSetupWithErrorHandling(ctx context.Context) error {
 // handleSetupFailure handles setup failures with retry logic
 func (w *Worker) handleSetupFailure(setupErr error) error {
 	statusManager := &StatusManager{StatusManager: *w.Worker.StatusManager}
-	// Load current status to get retry count
-	status, err := statusManager.LoadStatus()
+
+	// Check if we should retry using metadata
+	retryCount, err := statusManager.GetRetryCount()
 	if err != nil {
-		return fmt.Errorf("failed to load status for retry handling: %w", err)
+		w.Worker.Logger.Warnf("Failed to get retry count, assuming 0: %v", err)
+		retryCount = 0
 	}
 
-	// Check if we should retry
-	if status.RetryCount >= w.Worker.WorkerConfig.MaxRetries {
+	if retryCount >= w.Worker.WorkerConfig.MaxRetries {
 		w.Worker.Logger.Errorf("Maximum retries (%d) exceeded, giving up", w.Worker.WorkerConfig.MaxRetries)
 		return statusManager.MarkFailed(fmt.Sprintf("Max retries exceeded: %v", setupErr))
 	}
@@ -674,10 +677,10 @@ func (w *Worker) handleSetupFailure(setupErr error) error {
 	}
 
 	// Calculate next retry delay with exponential backoff
-	retryDelay := w.calculateRetryDelay(status.RetryCount)
+	retryDelay := w.calculateRetryDelay(retryCount)
 
 	w.Worker.Logger.Warnf("Setup failed (attempt %d/%d), will retry in %v: %v",
-		status.RetryCount+1, w.Worker.WorkerConfig.MaxRetries+1, retryDelay, setupErr)
+		retryCount+1, w.Worker.WorkerConfig.MaxRetries+1, retryDelay, setupErr)
 
 	// Update status with retry information
 	return statusManager.UpdateProgress(models.StatusRetrying,

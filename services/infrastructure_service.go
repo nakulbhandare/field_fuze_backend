@@ -157,16 +157,19 @@ func (s *InfrastructureService) enrichStatusWithContext(result *models.Execution
 		result.Phase = "Re-validation"
 		
 	case models.StatusFailed:
-		if result.RetryCount < 3 {
+		// Extract retry count from metadata
+		retryCount := s.getRetryCountFromMetadata(result)
+		if retryCount < 3 {
 			result.NextAction = "Will retry automatically after backoff period"
-			result.EstimatedTime = s.durationPtr(time.Duration(result.RetryCount+1) * 2 * time.Minute)
+			result.EstimatedTime = s.durationPtr(time.Duration(retryCount+1) * 2 * time.Minute)
 		} else {
 			result.NextAction = "Manual intervention required - max retries exceeded"
 		}
 		result.Phase = "Error Recovery"
 		
 	case models.StatusRetrying:
-		result.NextAction = fmt.Sprintf("Retrying infrastructure setup (attempt %d)", result.RetryCount+1)
+		retryCount := s.getRetryCountFromMetadata(result)
+		result.NextAction = fmt.Sprintf("Retrying infrastructure setup (attempt %d)", retryCount+1)
 		result.Phase = "Retry"
 		
 	case models.StatusCompleted:
@@ -326,13 +329,13 @@ func (s *InfrastructureService) startWorkerProcess(ctx context.Context) error {
 	statusFilePath := fmt.Sprintf("/tmp/fieldfuze-status-%s.json", s.config.AppEnv)
 
 	initialStatus := &models.ExecutionResult{
-		StartTime:      time.Now(),
-		Status:         "running",
-		Environment:    s.config.AppEnv,
-		TablesCreated:  make([]models.TableStatus, 0),
-		IndexesCreated: make([]models.IndexStatus, 0),
-		Metadata:       make(map[string]interface{}),
-		RetryCount:     0,
+		StartTime:     time.Now(),
+		Status:        "running",
+		Environment:   s.config.AppEnv,
+		TablesCreated: make([]models.TableStatus, 0),
+		Metadata: map[string]interface{}{
+			"retry_count": 0,
+		},
 		Success:        false,
 	}
 
@@ -372,7 +375,8 @@ func (s *InfrastructureService) IsWorkerHealthy() (bool, string, error) {
 	case "failed":
 		return false, fmt.Sprintf("Worker failed: %s", workerStatus.ErrorMessage), nil
 	case "retrying":
-		if workerStatus.RetryCount > 5 {
+		retryCount := s.getRetryCountFromMetadata(workerStatus)
+		if retryCount > 5 {
 			return false, "Worker stuck in retry loop", nil
 		}
 		return false, "Worker is retrying after failure", nil
@@ -400,4 +404,15 @@ func (s *InfrastructureService) AutoRestartIfNeeded(ctx context.Context) (*model
 
 	s.logger.Warnf("Worker is unhealthy (%s), initiating auto-restart", reason)
 	return s.RestartWorker(ctx, true)
+}
+
+// getRetryCountFromMetadata extracts retry count from ExecutionResult metadata
+func (s *InfrastructureService) getRetryCountFromMetadata(result *models.ExecutionResult) int {
+	if result.Metadata == nil {
+		return 0
+	}
+	if retryCount, ok := result.Metadata["retry_count"].(int); ok {
+		return retryCount
+	}
+	return 0
 }

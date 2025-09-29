@@ -43,39 +43,49 @@ func NewInfrastructureSetup(cfg *models.Config, log logger.Logger) (*Infrastruct
 }
 
 func (is *InfrastructureSetup) Execute(ctx context.Context, statusManager *StatusManager) error {
-	is.InfrastructureSetup.Logger.Info("Starting infrastructure setup...")
+	is.InfrastructureSetup.Logger.Info("Starting infrastructure setup with lightweight AWS status tracking...")
+
+	// Initialize lightweight refresher
+	lightweightRefresher := NewLightweightStatusRefresher(statusManager, is.InfrastructureSetup.DBClient, is.InfrastructureSetup.Logger)
+
+	// Start non-blocking status refresh (this never blocks the main worker)
+	lightweightRefresher.Start(ctx)
+	defer lightweightRefresher.Stop()
 
 	if err := statusManager.UpdateProgress(models.StatusRunning, "Starting infrastructure setup", nil); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
 
 	tableDetails := is.getTableDetails()
-
 	fmt.Println("Tables to process :: ", dal.PrintPrettyJSON(tableDetails))
 
-	// Check if all tables already exist and are active
+	// Check table existence with fast, non-blocking status capture
 	allTablesExist := true
 	var existingTables []string
 
 	for _, tableInfo := range tableDetails {
-		exists, err := is.tableExists(tableInfo.Name)
+		exists, err := is.checkTableExistenceNonBlocking(ctx, tableInfo, lightweightRefresher)
 		if err != nil {
-			is.InfrastructureSetup.Logger.Errorf("Failed to check if table %s exists: %v", tableInfo.Name, err)
+			is.InfrastructureSetup.Logger.Errorf("Failed to check table %s existence: %v", tableInfo.Name, err)
 			allTablesExist = false
 			break
 		}
 
 		if exists {
 			existingTables = append(existingTables, tableInfo.Name)
-			statusManager.AddTableCreated(tableInfo.Name)
+			// Request async status refresh (non-blocking)
+			lightweightRefresher.RequestRefresh(tableInfo.Name)
 		} else {
 			allTablesExist = false
 		}
 	}
 
-	// If all tables exist, validate and handle accordingly
+	// If all tables exist, validate and handle accordingly with lightweight status tracking
 	if allTablesExist {
-		is.InfrastructureSetup.Logger.Info("All required tables already exist, validating infrastructure...")
+		is.InfrastructureSetup.Logger.Info("All required tables already exist")
+
+		// Request refresh for all tables (non-blocking)
+		lightweightRefresher.RequestRefreshAll()
 
 		if err := is.validateInfrastructure(ctx, tableDetails); err != nil {
 			is.InfrastructureSetup.Logger.Errorf("Infrastructure validation failed: %v", err)
@@ -102,16 +112,14 @@ func (is *InfrastructureSetup) Execute(ctx context.Context, statusManager *Statu
 		return statusManager.MarkCompleted()
 	}
 
-	// Create tables sequentially to avoid throttling
+	// Create tables with lightweight tracking
 	for _, tableInfo := range tableDetails {
-		if err := is.createTableWithRetry(ctx, tableInfo); err != nil {
+		if err := is.createTableWithLightweightTracking(ctx, tableInfo, lightweightRefresher); err != nil {
 			is.InfrastructureSetup.Logger.Errorf("Failed to create table %s: %v", tableInfo.Name, err)
 			statusManager.MarkFailed(fmt.Sprintf("Failed to create table %s: %v", tableInfo.Name, err))
 			return err
 		}
 
-		// Record successful table creation
-		statusManager.AddTableCreated(tableInfo.Name)
 		is.InfrastructureSetup.Logger.Infof("✅ Successfully created table: %s", tableInfo.Name)
 	}
 
@@ -172,6 +180,8 @@ func (is *InfrastructureSetup) getGSIIndexCount(tableName string) int {
 		return 2 // email-index, username-index
 	case "role":
 		return 2 // name-index, status-index
+	case "organization":
+		return 4 // name-index, status-index, created-by-index, email-index
 	default:
 		return 0
 	}
@@ -183,6 +193,8 @@ func (is *InfrastructureSetup) getTableIndexes(tableName string) []string {
 		return []string{"email-index", "username-index"} // Only GSI indexes
 	case "role":
 		return []string{"name-index", "status-index"} // Only GSI indexes
+	case "organization":
+		return []string{"name-index", "status-index", "created-by-index", "email-index"} // Only GSI indexes
 	default:
 		return []string{}
 	}
@@ -682,4 +694,73 @@ func (is *InfrastructureSetup) ExecuteDelete(ctx context.Context, statusManager 
 
 	is.InfrastructureSetup.Logger.Warn("🗑️ Infrastructure deletion completed successfully! All tables deleted.")
 	return nil
+}
+
+// Non-blocking table existence check with comprehensive AWS status capture
+func (is *InfrastructureSetup) checkTableExistenceNonBlocking(ctx context.Context, tableInfo *models.TableInfo, refresher *LightweightStatusRefresher) (bool, error) {
+	is.InfrastructureSetup.Logger.Debugf("Checking existence and capturing status for table: %s", tableInfo.Name)
+
+	// Use fast status check with short timeout
+	fastCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	quickStatus, err := refresher.getTableStatusFast(fastCtx, tableInfo.Name)
+	if err != nil {
+		if isTableNotFoundError(err) {
+			is.InfrastructureSetup.Logger.Debugf("Table %s does not exist", tableInfo.Name)
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Table exists - queue async status update (non-blocking)
+	refresher.RequestRefresh(tableInfo.Name)
+
+	is.InfrastructureSetup.Logger.Debugf("Table %s exists with status: %s", tableInfo.Name, quickStatus.Status)
+	return true, nil
+}
+
+// Lightweight table creation with minimal status tracking
+func (is *InfrastructureSetup) createTableWithLightweightTracking(ctx context.Context, tableInfo *models.TableInfo, refresher *LightweightStatusRefresher) error {
+	maxRetries := 3
+	baseDelay := 5 * time.Second
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := time.Duration(attempt) * baseDelay
+			is.InfrastructureSetup.Logger.Infof("Retrying table creation for %s in %v", tableInfo.Name, delay)
+
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+
+		// Quick existence check (non-blocking)
+		exists, err := is.checkTableExistenceNonBlocking(ctx, tableInfo, refresher)
+		if err != nil {
+			is.InfrastructureSetup.Logger.Errorf("Failed to check table existence: %v", err)
+			continue
+		} else if exists {
+			is.InfrastructureSetup.Logger.Infof("✅ Table %s already exists", tableInfo.Name)
+			return nil
+		}
+
+		// Create the table
+		if err := is.createTableFromEmbeddedJSON(tableInfo.Name); err != nil {
+			is.InfrastructureSetup.Logger.Errorf("Failed to create table %s: %v", tableInfo.Name, err)
+			if attempt == maxRetries {
+				return fmt.Errorf("failed to create table %s after %d attempts: %w", tableInfo.Name, maxRetries+1, err)
+			}
+			continue
+		}
+
+		// Request async status update after creation (non-blocking)
+		refresher.RequestRefresh(tableInfo.Name)
+
+		return nil
+	}
+
+	return fmt.Errorf("exhausted retry attempts for table %s", tableInfo.Name)
 }
