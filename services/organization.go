@@ -108,3 +108,40 @@ func isValidEmail(email string) bool {
 func (s *OrganizationService) GetOrganizations(key string) ([]*models.Organization, error) {
 	return s.organizationRepo.GetOrganization(key)
 }
+
+func (s *OrganizationService) GetOrganizationByID(id string) (*models.Organization, error) {
+	organizations, err := s.organizationRepo.GetOrganization(id)
+	if err != nil {
+		return nil, err
+	}
+	if len(organizations) == 0 {
+		return nil, errors.New("organization not found")
+	}
+	return organizations[0], nil
+}
+
+func (s *OrganizationService) UpdateOrganization(id string, req *models.Organization, updatedBy string) (*models.Organization, error) {
+	if err := s.validateCreateOrganization(req); err != nil {
+		return nil, err
+	}
+
+	req.UpdatedBy = updatedBy
+	return s.organizationRepo.UpdateOrganization(id, req)
+}
+
+func (s *OrganizationService) DeleteOrganization(id string) error {
+	return s.organizationRepo.DeleteOrganization(id)
+}
+
+func (s *OrganizationService) GetOrganizationAssignmentsByStatus(status string) ([]*models.Organization, error) {
+	// For now, return all organizations since there's no status-based filtering in the repository
+	return s.organizationRepo.GetOrganization("")
+}
+
+func (s *OrganizationService) UpdateOrganizationAssignment(id string, organizationAssignment *models.Organization, updatedBy string) (*models.Organization, error) {
+	return s.UpdateOrganization(id, organizationAssignment, updatedBy)
+}
+
+func (s *OrganizationService) DeleteOrganizationAssignment(id string) error {
+	return s.DeleteOrganization(id)
+}

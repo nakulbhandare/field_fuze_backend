@@ -8,8 +8,9 @@ import (
 
 // Repository implements RepositoryContainerInterface
 type Repository struct {
-	userRepository UserRepositoryInterface
-	roleRepository RoleRepositoryInterface
+	userRepository         UserRepositoryInterface
+	roleRepository         RoleRepositoryInterface
+	organizationRepository OrganizationRepositoryInterface
 }
 
 // NewRepository creates a new repository container with all dependencies injected
@@ -17,8 +18,9 @@ func NewRepository(dalContainer dal.DALContainerInterface, cfg *models.Config, l
 	dbClient := dalContainer.GetDatabaseClient()
 	
 	return &Repository{
-		userRepository: NewUserRepository(dbClient, cfg, log),
-		roleRepository: NewRoleRepository(dbClient, cfg, log),
+		userRepository:         NewUserRepository(dbClient, cfg, log),
+		roleRepository:         NewRoleRepository(dbClient, cfg, log),
+		organizationRepository: NewOrganizationRepository(dbClient, cfg, log),
 	}
 }
 
@@ -31,3 +33,9 @@ func (r *Repository) GetUserRepository() UserRepositoryInterface {
 func (r *Repository) GetRoleRepository() RoleRepositoryInterface {
 	return r.roleRepository
 }
+
+// GetOrganizationRepository returns the organization repository interface
+func (r *Repository) GetOrganizationRepository() OrganizationRepositoryInterface {
+	return r.organizationRepository
+}
+

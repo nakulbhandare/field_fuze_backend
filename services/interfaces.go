@@ -41,13 +41,6 @@ type InfrastructureServiceInterface interface {
 	AutoRestartIfNeeded(ctx context.Context) (*models.ServiceRestartResult, error)
 }
 
-// ServiceContainer interface defines the main service container contract
-type ServiceContainerInterface interface {
-	GetUserService() UserServiceInterface
-	GetRoleService() RoleServiceInterface
-	GetInfrastructureService() InfrastructureServiceInterface
-}
-
 // OrganizationServiceInterface defines the contract for organization service
 type OrganizationServiceInterface interface {
 	CreateOrganization(ctx context.Context, organization *models.Organization, createdBy string) (*models.Organization, error)
@@ -58,4 +51,12 @@ type OrganizationServiceInterface interface {
 	GetOrganizationAssignmentsByStatus(status string) ([]*models.Organization, error)
 	UpdateOrganizationAssignment(id string, organizationAssignment *models.Organization, updatedBy string) (*models.Organization, error)
 	DeleteOrganizationAssignment(id string) error
+}
+
+// ServiceContainer interface defines the main service container contract
+type ServiceContainerInterface interface {
+	GetUserService() UserServiceInterface
+	GetRoleService() RoleServiceInterface
+	GetInfrastructureService() InfrastructureServiceInterface
+	GetOrganizationService() OrganizationServiceInterface
 }

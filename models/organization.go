@@ -19,7 +19,7 @@ type Organization struct {
 	Status      OrganizationStatus `json:"status" dynamodbav:"status" validate:"required,oneof=active inactive suspended"`
 	CreatedAt   time.Time          `json:"created_at" dynamodbav:"created_at" validate:"omitempty"`
 	UpdatedAt   time.Time          `json:"updated_at" dynamodbav:"updated_at" validate:"omitempty"`
-	CreatedBy   string             `json:"created_by" dynamodbav:"created_by" validate:"required"`
+	CreatedBy   string             `json:"created_by" dynamodbav:"created_by" validate:"omitempty"`                     // Audit fields
 	UpdatedBy   string             `json:"updated_by,omitempty" dynamodbav:"updated_by,omitempty" validate:"omitempty"` // Contact information
 	Email       string             `json:"email,omitempty" dynamodbav:"email,omitempty" validate:"omitempty,email"`
 	Phone       string             `json:"phone,omitempty" dynamodbav:"phone,omitempty" validate:"omitempty,e164"`

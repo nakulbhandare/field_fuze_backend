@@ -20,6 +20,7 @@ type Controller struct {
 	User           *UserController
 	Role           *RoleController
 	Infrastructure *InfrastructureController
+	Organization   *OrganizationController
 }
 
 func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *Controller {
@@ -43,6 +44,7 @@ func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *
 		User:           NewUserController(ctx, serviceContainer.GetUserService(), log, jwtManager),
 		Role:           NewRoleController(ctx, serviceContainer.GetRoleService(), log),
 		Infrastructure: NewInfrastructureController(ctx, serviceContainer.GetInfrastructureService(), log),
+		Organization:   NewOrganizationController(ctx, serviceContainer.GetOrganizationService(), log),
 	}
 }
 
@@ -124,6 +126,15 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 			worker.POST("/restart", c.Infrastructure.RestartWorker)          // Restart worker
 			worker.POST("/auto-restart", c.Infrastructure.AutoRestartWorker) // Auto-restart if unhealthy
 		}
+	}
+
+	organization := v1.Group("/organization", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequirePermission("admin"))
+	{
+		organization.POST("", c.Organization.CreateOrganization)
+		organization.GET("", c.Organization.GetOrganizations)
+		// organization.GET("/:id", c.Organization.GetOrganizationByID)
+		// organization.PUT("/:id", c.Organization.UpdateOrganization)
+		// organization.DELETE("/:id", c.Organization.DeleteOrganization)
 	}
 
 	// Create HTTP server

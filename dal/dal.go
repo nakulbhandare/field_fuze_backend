@@ -44,7 +44,7 @@ func NewDALContainer(cfg *models.Config, log logger.Logger) (DALContainerInterfa
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &DALContainer{
 		databaseClient: dbClient,
 	}, nil
@@ -204,7 +204,10 @@ func (db *DynamoDBClient) PutItem(ctx context.Context, tableName string, item in
 	}
 
 	_, err = db.client.PutItem(ctx, input)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // UpdateItem updates an item in DynamoDB

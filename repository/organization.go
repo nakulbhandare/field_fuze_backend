@@ -69,14 +69,14 @@ func (r *OrganizationRepository) GetOrganization(key string) ([]*models.Organiza
 
 	if keyType == "id" {
 		config = models.QueryConfig{
-			TableName: r.config.DynamoDBTablePrefix + "_roles",
+			TableName: r.config.DynamoDBTablePrefix + "_organization",
 			KeyName:   "id",
 			KeyValue:  key,
 			KeyType:   models.StringType,
 		}
 	} else {
 		config = models.QueryConfig{
-			TableName: r.config.DynamoDBTablePrefix + "_roles",
+			TableName: r.config.DynamoDBTablePrefix + "_organization",
 			IndexName: indexName,
 			KeyName:   keyName,
 			KeyValue:  key,
@@ -98,6 +98,55 @@ func (r *OrganizationRepository) GetOrganization(key string) ([]*models.Organiza
 
 	r.logger.Infof("Organization found: %s", organization.ID)
 	return []*models.Organization{&organization}, nil
+}
+
+func (r *OrganizationRepository) UpdateOrganization(id string, organization *models.Organization) (*models.Organization, error) {
+	ctx := context.Background()
+	r.logger.Infof("Updating organization: %s", id)
+
+	if id == "" {
+		return nil, errors.New("organization ID is required")
+	}
+
+	existing, err := r.GetOrganization(id)
+	if err != nil {
+		return nil, fmt.Errorf("organization not found: %w", err)
+	}
+	if len(existing) == 0 {
+		return nil, errors.New("organization not found")
+	}
+
+	now := time.Now()
+	organization.ID = id
+	organization.CreatedAt = existing[0].CreatedAt
+	organization.UpdatedAt = now
+
+	err = r.db.PutItem(ctx, r.config.DynamoDBTablePrefix+"_organization", organization)
+	if err != nil {
+		r.logger.Errorf("Failed to update organization: %v", err)
+		return nil, err
+	}
+
+	r.logger.Infof("Organization updated successfully: %s", id)
+	return organization, nil
+}
+
+func (r *OrganizationRepository) DeleteOrganization(id string) error {
+	ctx := context.Background()
+	r.logger.Infof("Deleting organization: %s", id)
+
+	if id == "" {
+		return errors.New("organization ID is required")
+	}
+
+	err := r.db.DeleteItem(ctx, r.config.DynamoDBTablePrefix+"_organization", "id", id)
+	if err != nil {
+		r.logger.Errorf("Failed to delete organization: %v", err)
+		return err
+	}
+
+	r.logger.Infof("Organization deleted successfully: %s", id)
+	return nil
 }
 
 func (r *OrganizationRepository) determineKeyType(key string) (keyType, indexName, keyName string) {

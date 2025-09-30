@@ -32,6 +32,7 @@ type RoleRepositoryInterface interface {
 type RepositoryContainerInterface interface {
 	GetUserRepository() UserRepositoryInterface
 	GetRoleRepository() RoleRepositoryInterface
+	GetOrganizationRepository() OrganizationRepositoryInterface
 }
 
 // OrganizationRepositoryInterface defines the contract for the organization repository
