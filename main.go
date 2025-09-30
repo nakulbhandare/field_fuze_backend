@@ -56,7 +56,7 @@ func Init() {
 // @license.url https://opensource.org/licenses/MIT
 
 // @host localhost:8081
-// @BasePath /api/v1
+// @BasePath /api/v1/auth
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -70,9 +70,13 @@ func main() {
 	ctx := context.Background()
 
 	r := gin.New()
+	
+	// Add Gin's default logger middleware for colored API call logs
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	
 	c := controller.NewController(context.Background(), config, logger.NewLogger(config.LogLevel, config.LogFormat))
 	var wg sync.WaitGroup
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

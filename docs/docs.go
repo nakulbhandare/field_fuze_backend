@@ -24,7 +24,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/user/list": {
+        "/user/list": {
             "get": {
                 "security": [
                     {
@@ -78,7 +78,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/login": {
+        "/user/login": {
             "post": {
                 "description": "Authenticate user and return JWT token",
                 "consumes": [
@@ -130,7 +130,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/logout": {
+        "/user/logout": {
             "post": {
                 "security": [
                     {
@@ -170,7 +170,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/register": {
+        "/user/register": {
             "post": {
                 "description": "Create a new user account",
                 "consumes": [
@@ -222,7 +222,286 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/token": {
+        "/user/role": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all roles",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Role Management"
+                ],
+                "summary": "Get all roles",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number for pagination",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of roles per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by role status (active, inactive, archived)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Roles retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve roles",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new role with specified permissions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Role Management"
+                ],
+                "summary": "Create a new role",
+                "parameters": [
+                    {
+                        "description": "Create role assignment request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RoleAssignment"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Role created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid role data",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict - Role already exists",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Role creation failed",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/role/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve role details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Role Management"
+                ],
+                "summary": "Get role by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role details retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid role ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - Role does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve role",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update role information by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Role Management"
+                ],
+                "summary": "Update role by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update role assignment request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RoleAssignment"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid role ID or data",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - Role does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to update role",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete role by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Role Management"
+                ],
+                "summary": "Delete role by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid role ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - Role does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to delete role",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/token": {
             "post": {
                 "description": "Generate or refresh JWT token (legacy endpoint - use /login instead)",
                 "consumes": [
@@ -274,14 +553,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/update/{id}": {
+        "/user/update/{id}": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update user information by ID",
+                "description": "Update user information by ID. Note: Role and Roles fields are ignored - use dedicated role assignment endpoints instead.",
                 "consumes": [
                     "application/json"
                 ],
@@ -301,7 +580,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Update user request",
+                        "description": "Update user request (role/roles fields will be ignored)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -338,7 +617,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/validate": {
+        "/user/validate": {
             "post": {
                 "description": "Validate a JWT token and return user information with roles",
                 "consumes": [
@@ -384,7 +663,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/user/{id}": {
+        "/user/{id}": {
             "get": {
                 "security": [
                     {
@@ -432,6 +711,146 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error - Failed to retrieve user",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/{user_id}/role/{role_id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign an existing role by ID to a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Assign existing role to user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "role_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role assigned successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid user ID or role ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Insufficient permissions",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - User or role does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict - User already has this role",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to assign role",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove an existing role from a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Remove role from user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "role_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role removed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid user ID or role ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Insufficient permissions",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - User or role does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to remove role",
                         "schema": {
                             "$ref": "#/definitions/models.APIResponse"
                         }
@@ -559,6 +978,11 @@ const docTemplate = `{
         },
         "models.RoleAssignment": {
             "type": "object",
+            "required": [
+                "level",
+                "permissions",
+                "role_name"
+            ],
             "properties": {
                 "assigned_at": {
                     "type": "string"
@@ -573,10 +997,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "level": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1
                 },
                 "permissions": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }
@@ -585,7 +1012,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 2
                 }
             }
         },
@@ -697,7 +1126,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8081",
-	BasePath:         "/api/v1",
+	BasePath:         "/api/v1/auth",
 	Schemes:          []string{},
 	Title:            "FieldFuze Backend API",
 	Description:      "FieldFuze Backend API with DynamoDB and Telnyx Integration\n\n## 🔥 AUTHENTICATION FLOW:\n### Step 1: Register Customer\n**POST /auth/register** - Create customer account (no token generated)\n`{\"email\": \"user@example.com\", \"username\": \"john\", \"password\": \"pass123\", \"first_name\": \"John\", \"last_name\": \"Doe\"}`\n\n## 🚀 QUICK AUTHENTICATION:\n### Using the Authorize Button (Recommended)\n1. Click the **🔓 Authorize** button (top right of any API section)\n2. In the authorization dialog, use the **Login** form:\n- Enter your **Username** (email)\n- Enter your **Password**\n- Click **Login** button\n3. Your Bearer token will be **automatically applied** to all API calls!\n4. All protected endpoints will now work without manual token entry\n\n### Manual Token Entry (Alternative)\nIf you prefer manual setup: Get token from `/auth/login`, then paste `Bearer YOUR_TOKEN` in the Authorization field",
