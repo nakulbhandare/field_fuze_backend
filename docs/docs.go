@@ -1254,6 +1254,7 @@ const docTemplate = `{
         "models.Organization": {
             "type": "object",
             "required": [
+                "created_by",
                 "name",
                 "status"
             ],
@@ -1276,7 +1277,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_by": {
-                    "description": "Audit fields",
                     "type": "string"
                 },
                 "description": {
