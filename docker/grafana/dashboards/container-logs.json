@@ -1,0 +1,296 @@
+{
+  "id": null,
+  "title": "Container Logs by Name",
+  "tags": ["logs", "containers", "loki"],
+  "style": "dark",
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Container Overview",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count by (filename) (count_over_time({job=\"containerlogs\"} [5m]))",
+          "legendFormat": "{{filename}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "displayMode": "list",
+            "orientation": "horizontal"
+          }
+        }
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Backend Container Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*backend.*\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "id": 3,
+      "title": "Nginx Container Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*nginx.*\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      }
+    },
+    {
+      "id": 4,
+      "title": "Grafana Container Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*grafana.*\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      }
+    },
+    {
+      "id": 5,
+      "title": "Prometheus Container Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*prometheus.*\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      }
+    },
+    {
+      "id": 6,
+      "title": "Jaeger Container Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*jaeger.*\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      }
+    },
+    {
+      "id": 7,
+      "title": "Loki Container Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*loki.*\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      }
+    },
+    {
+      "id": 8,
+      "title": "Container Log Volume by Name",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum by (container_name) (rate({container_name!=\"\"} [5m]))",
+          "legendFormat": "{{container_name}}",
+          "refId": "A"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "logs/sec",
+          "show": true
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      }
+    },
+    {
+      "id": 9,
+      "title": "Container Error Logs",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum by (container_name) (rate({container_name!=\"\"} |~ \"(?i)(error|exception|fail)\" [5m]))",
+          "legendFormat": "{{container_name}} errors",
+          "refId": "A"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "errors/sec",
+          "show": true
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      }
+    },
+    {
+      "id": 10,
+      "title": "Search Logs by Container",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\"$container\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      }
+    },
+    {
+      "id": 11,
+      "title": "All Container Errors",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name!=\"\"} |~ \"(?i)(error|exception|fail|critical)\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "type": "query",
+        "query": "label_values(container_name)",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "datasource": "Loki"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "10s"
+}

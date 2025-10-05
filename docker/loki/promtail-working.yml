@@ -1,0 +1,61 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker-containers
+          __path__: /var/lib/docker/containers/*/*log
+
+    pipeline_stages:
+      # Parse JSON log format
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            time: time
+
+      # Extract container ID from filename
+      - regex:
+          expression: '/var/lib/docker/containers/(?P<container_id>[a-f0-9]{12})[a-f0-9]{52}/.*'
+          source: filename
+
+      # Map container IDs to names
+      - template:
+          source: container_name
+          template: |
+            {{- if eq .container_id "1335677d667d" -}}cadvisor
+            {{- else if eq .container_id "b2f40d7c1b86" -}}nginx
+            {{- else if eq .container_id "8c4ae4164e05" -}}grafana
+            {{- else if eq .container_id "e873776e022d" -}}promtail
+            {{- else if eq .container_id "2629aed3ca7d" -}}loki
+            {{- else if eq .container_id "66bb1f376a56" -}}prometheus
+            {{- else if eq .container_id "27dd2c5eff20" -}}node-exporter
+            {{- else if eq .container_id "9af8d570f245" -}}backend
+            {{- else if eq .container_id "2666317c91ef" -}}jaeger
+            {{- else -}}{{ .container_id }}{{- end -}}
+
+      # Set timestamp
+      - timestamp:
+          format: RFC3339Nano
+          source: time
+
+      # Add labels
+      - labels:
+          stream:
+          container_id:
+          container_name:
+
+      # Output log content
+      - output:
+          source: output

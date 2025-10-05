@@ -1,0 +1,241 @@
+{
+  "id": null,
+  "title": "Real-time Container Logs",
+  "tags": ["logs", "containers", "realtime", "loki"],
+  "style": "dark",
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Container Selection",
+      "type": "text",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "content": "**Select containers from the dropdown above to filter logs. Use the time picker to adjust the time range.**",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Live Container Logs - $container",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\"$container\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      }
+    },
+    {
+      "id": 3,
+      "title": "Backend Container Logs Only",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*backend.*\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      }
+    },
+    {
+      "id": 4,
+      "title": "Nginx Access Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\".*nginx.*\"} | json",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      }
+    },
+    {
+      "id": 5,
+      "title": "Error Logs Across All Containers",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name!=\"\"} |~ \"(?i)(error|exception|fail|critical|fatal)\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      }
+    },
+    {
+      "id": 6,
+      "title": "Log Rate by Container",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum by (container_name) (rate({container_name=~\"$container\"} [1m]))",
+          "legendFormat": "{{container_name}}",
+          "refId": "A"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "logs/sec",
+          "show": true
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 44
+      }
+    },
+    {
+      "id": 7,
+      "title": "HTTP Status Distribution",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "sum by (status) (count_over_time({container_name=~\".*nginx.*\"} | json | status =~ \"[0-9]+\" [5m]))",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      }
+    },
+    {
+      "id": 8,
+      "title": "Container Log Levels",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum by (level, container_name) (count_over_time({container_name=~\"$container\"} | json | level != \"\" [5m]))",
+          "legendFormat": "{{container_name}}: {{level}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "displayMode": "list",
+            "orientation": "horizontal"
+          }
+        }
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      }
+    },
+    {
+      "id": 9,
+      "title": "Search and Filter Logs",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{container_name=~\"$container\"} |~ \"$search_term\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "type": "query",
+        "query": "label_values(container_name)",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "datasource": "Loki"
+      },
+      {
+        "name": "search_term",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "value": ".*"
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "refresh": "5s"
+}
