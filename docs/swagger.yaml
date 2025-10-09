@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /api/v1/auth
 definitions:
   controller.LoginRequest:
     properties:
@@ -93,15 +93,24 @@ definitions:
       expires_at:
         type: string
       level:
+        maximum: 10
+        minimum: 1
         type: integer
       permissions:
         items:
           type: string
+        minItems: 1
         type: array
       role_id:
         type: string
       role_name:
+        maxLength: 50
+        minLength: 2
         type: string
+    required:
+    - level
+    - permissions
+    - role_name
     type: object
   models.User:
     properties:
@@ -192,7 +201,7 @@ info:
   title: FieldFuze Backend API
   version: "1.0"
 paths:
-  /auth/user/{id}:
+  /user/{id}:
     get:
       consumes:
       - application/json
@@ -227,7 +236,98 @@ paths:
       summary: Get user details
       tags:
       - User Management
-  /auth/user/list:
+  /user/{user_id}/role/{role_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove an existing role from a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role ID
+        in: path
+        name: role_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role removed successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid user ID or role ID
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Insufficient permissions
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - User or role does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to remove role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove role from user
+      tags:
+      - User Management
+    post:
+      consumes:
+      - application/json
+      description: Assign an existing role by ID to a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role ID
+        in: path
+        name: role_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role assigned successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid user ID or role ID
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Insufficient permissions
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - User or role does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "409":
+          description: Conflict - User already has this role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to assign role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign existing role to user
+      tags:
+      - User Management
+  /user/list:
     get:
       consumes:
       - application/json
@@ -261,7 +361,7 @@ paths:
       summary: Get list of users
       tags:
       - User Management
-  /auth/user/login:
+  /user/login:
     post:
       consumes:
       - application/json
@@ -295,7 +395,7 @@ paths:
       summary: User login
       tags:
       - Authentication
-  /auth/user/logout:
+  /user/logout:
     post:
       consumes:
       - application/json
@@ -320,7 +420,7 @@ paths:
       summary: User logout
       tags:
       - Authentication
-  /auth/user/register:
+  /user/register:
     post:
       consumes:
       - application/json
@@ -354,7 +454,185 @@ paths:
       summary: Register a new user
       tags:
       - Authentication
-  /auth/user/token:
+  /user/role:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of all roles
+      parameters:
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of roles per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by role status (active, inactive, archived)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Roles retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve roles
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all roles
+      tags:
+      - Role Management
+    post:
+      consumes:
+      - application/json
+      description: Create a new role with specified permissions
+      parameters:
+      - description: Create role assignment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RoleAssignment'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Role created successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid role data
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "409":
+          description: Conflict - Role already exists
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Role creation failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new role
+      tags:
+      - Role Management
+  /user/role/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete role by ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role deleted successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid role ID
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - Role does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to delete role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete role by ID
+      tags:
+      - Role Management
+    get:
+      consumes:
+      - application/json
+      description: Retrieve role details by ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role details retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid role ID
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - Role does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get role by ID
+      tags:
+      - Role Management
+    put:
+      consumes:
+      - application/json
+      description: Update role information by ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update role assignment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RoleAssignment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role updated successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid role ID or data
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found - Role does not exist
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to update role
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update role by ID
+      tags:
+      - Role Management
+  /user/token:
     post:
       consumes:
       - application/json
@@ -388,18 +666,19 @@ paths:
       summary: Generate JWT token
       tags:
       - Authentication
-  /auth/user/update/{id}:
+  /user/update/{id}:
     patch:
       consumes:
       - application/json
-      description: Update user information by ID
+      description: 'Update user information by ID. Note: Role and Roles fields are
+        ignored - use dedicated role assignment endpoints instead.'
       parameters:
       - description: User ID
         in: path
         name: id
         required: true
         type: string
-      - description: Update user request
+      - description: Update user request (role/roles fields will be ignored)
         in: body
         name: request
         required: true
@@ -429,7 +708,7 @@ paths:
       summary: Update user details
       tags:
       - User Management
-  /auth/user/validate:
+  /user/validate:
     post:
       consumes:
       - application/json

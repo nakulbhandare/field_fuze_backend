@@ -41,7 +41,7 @@ func NewUserController(ctx context.Context, userRepo *repository.UserRepository,
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid registration data"
 // @Failure 409 {object} models.APIResponse "Conflict - User already exists"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Registration failed"
-// @Router /auth/user/register [post]
+// @Router /user/register [post]
 func (h *UserController) Register(c *gin.Context) {
 	var req models.User
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -93,7 +93,7 @@ func (h *UserController) Register(c *gin.Context) {
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid user ID"
 // @Failure 404 {object} models.APIResponse "Not Found - User does not exist"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to retrieve user"
-// @Router /auth/user/{id} [get]
+// @Router /user/{id} [get]
 func (h *UserController) GetUser(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -141,7 +141,7 @@ func (h *UserController) GetUser(c *gin.Context) {
 // @Param sort query string false "Sort order (e.g., 'asc' or 'desc')"
 // @Success 200 {object} models.APIResponse "User list retrieved successfully"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to retrieve user list"
-// @Router /auth/user/list [get]
+// @Router /user/list [get]
 func (h *UserController) GetUserList(c *gin.Context) {
 	// Parse pagination parameters
 	page := 1
@@ -227,18 +227,18 @@ func (h *UserController) GetUserList(c *gin.Context) {
 
 // UpdateUser handles PATCH /api/v1/auth/user/update/{id}
 // @Summary Update user details
-// @Description Update user information by ID
+// @Description Update user information by ID. Note: Role and Roles fields are ignored - use dedicated role assignment endpoints instead.
 // @Tags User Management
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param id path string true "User ID"
-// @Param request body models.User true "Update user request"
+// @Param request body models.User true "Update user request (role/roles fields will be ignored)"
 // @Success 200 {object} models.APIResponse "User updated successfully"
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid user ID or data"
 // @Failure 404 {object} models.APIResponse "Not Found - User does not exist"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to update user"
-// @Router /auth/user/update/{id} [patch]
+// @Router /user/update/{id} [patch]
 func (h *UserController) UpdateUser(c *gin.Context) {
 	var req models.User
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -269,6 +269,10 @@ func (h *UserController) UpdateUser(c *gin.Context) {
 		})
 		return
 	}
+
+	// Explicitly clear role fields to prevent updates
+	req.Role = ""
+	req.Roles = nil
 
 	// Update user in the repository
 	updatedUser, err := h.userRepo.UpdateUser(userID, &req)
@@ -311,7 +315,7 @@ type LoginRequest struct {
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid login data"
 // @Failure 401 {object} models.APIResponse "Unauthorized - Invalid credentials"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Login failed"
-// @Router /auth/user/login [post]
+// @Router /user/login [post]
 func (h *UserController) Login(c *gin.Context) {
 	// This endpoint is handled entirely by the AuthMiddleware
 	// The middleware detects login requests and processes them automatically
@@ -328,7 +332,7 @@ func (h *UserController) Login(c *gin.Context) {
 // @Failure 400 {object} models.APIResponse "Bad Request - Invalid token request"
 // @Failure 401 {object} models.APIResponse "Unauthorized - Invalid credentials"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Token generation failed"
-// @Router /auth/user/token [POST]
+// @Router /user/token [POST]
 // //
 func (h *UserController) GenerateToken(c *gin.Context) {
 	// This endpoint is handled entirely by the AuthMiddleware
@@ -345,7 +349,7 @@ func (h *UserController) GenerateToken(c *gin.Context) {
 // @Success 200 {object} models.APIResponse "Logout successful"
 // @Failure 401 {object} models.APIResponse "Unauthorized - Invalid or missing token"
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Logout failed"
-// @Router /auth/user/logout [post]
+// @Router /user/logout [post]
 func (h *UserController) Logout(c *gin.Context) {
 	// Extract JWT claims from context (set by auth middleware)
 	claims, exists := c.Get("jwt_claims")
@@ -404,8 +408,240 @@ func (h *UserController) Logout(c *gin.Context) {
 // @Success      200  {object}  models.APIResponse  "Token is valid"
 // @Failure      400  {object}  models.APIResponse  "Bad Request - Missing or invalid token in request body"
 // @Failure      401  {object}  models.APIResponse  "Unauthorized - Invalid or expired token"
-// @Router       /auth/user/validate [post]
+// @Router       /user/validate [post]
 func (h *UserController) ValidateToken(c *gin.Context) {
 	// Delegate to JWT middleware which handles the complete token validation flow
 	h.jwtManager.ValidateTokenEndpoint(c)
+}
+
+// AssignRole handles POST /api/v1/auth/user/{user_id}/role/{role_id}
+// @Summary Assign existing role to user
+// @Description Assign an existing role by ID to a user
+// @Tags User Management
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param user_id path string true "User ID"
+// @Param role_id path string true "Role ID"
+// @Success 200 {object} models.APIResponse "Role assigned successfully"
+// @Failure 400 {object} models.APIResponse "Bad Request - Invalid user ID or role ID"
+// @Failure 403 {object} models.APIResponse "Forbidden - Insufficient permissions"
+// @Failure 404 {object} models.APIResponse "Not Found - User or role does not exist"
+// @Failure 409 {object} models.APIResponse "Conflict - User already has this role"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to assign role"
+// @Router /user/{user_id}/role/{role_id} [post]
+func (h *UserController) AssignRole(c *gin.Context) {
+	userID := c.Param("user_id")
+	roleID := c.Param("role_id")
+
+	if userID == "" {
+		h.logger.Error("Missing user ID")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Missing user ID",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: "User ID is required",
+			},
+		})
+		return
+	}
+
+	if roleID == "" {
+		h.logger.Error("Missing role ID")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Missing role ID",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: "Role ID is required",
+			},
+		})
+		return
+	}
+
+	// Check if user exists
+	users, err := h.userRepo.GetUser(userID)
+	if err != nil {
+		h.logger.Error("Failed to get user", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get user",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	if len(users) == 0 {
+		c.JSON(http.StatusNotFound, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusNotFound,
+			Message: "User not found",
+		})
+		return
+	}
+
+	// Assign role to user using the existing method
+	updatedUser, err := h.userRepo.AssignRoleToUser(h.ctx, userID, roleID)
+	if err != nil {
+		if err.Error() == "user already has this role" {
+			c.JSON(http.StatusConflict, models.APIResponse{
+				Status:  "error",
+				Code:    http.StatusConflict,
+				Message: "User already has this role",
+				Error: &models.APIError{
+					Type:    "ConflictError",
+					Details: "User already has this role assigned",
+				},
+			})
+			return
+		}
+
+		if err.Error() == "role not found" {
+			c.JSON(http.StatusNotFound, models.APIResponse{
+				Status:  "error",
+				Code:    http.StatusNotFound,
+				Message: "Role not found",
+				Error: &models.APIError{
+					Type:    "NotFoundError",
+					Details: "The specified role does not exist",
+				},
+			})
+			return
+		}
+
+		h.logger.Error("Failed to assign role to user", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to assign role to user",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "Role assigned successfully",
+		Data:    updatedUser,
+	})
+}
+
+// DetachRole handles DELETE /api/v1/auth/user/{user_id}/role/{role_id}
+// @Summary Remove role from user
+// @Description Remove an existing role from a user
+// @Tags User Management
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param user_id path string true "User ID"
+// @Param role_id path string true "Role ID"
+// @Success 200 {object} models.APIResponse "Role removed successfully"
+// @Failure 400 {object} models.APIResponse "Bad Request - Invalid user ID or role ID"
+// @Failure 403 {object} models.APIResponse "Forbidden - Insufficient permissions"
+// @Failure 404 {object} models.APIResponse "Not Found - User or role does not exist"
+// @Failure 500 {object} models.APIResponse "Internal Server Error - Failed to remove role"
+// @Router /user/{user_id}/role/{role_id} [delete]
+func (h *UserController) DetachRole(c *gin.Context) {
+	userID := c.Param("user_id")
+	roleID := c.Param("role_id")
+
+	if userID == "" {
+		h.logger.Error("Missing user ID")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Missing user ID",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: "User ID is required",
+			},
+		})
+		return
+	}
+
+	if roleID == "" {
+		h.logger.Error("Missing role ID")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Missing role ID",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: "Role ID is required",
+			},
+		})
+		return
+	}
+
+	// Check if user exists
+	users, err := h.userRepo.GetUser(userID)
+	if err != nil {
+		h.logger.Error("Failed to get user", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to get user",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	if len(users) == 0 {
+		c.JSON(http.StatusNotFound, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusNotFound,
+			Message: "User not found",
+		})
+		return
+	}
+
+	// Remove role from user using the existing method
+	updatedUser, err := h.userRepo.RemoveRoleFromUser(h.ctx, userID, roleID)
+	if err != nil {
+		if err.Error() == "role not found for user" {
+			c.JSON(http.StatusNotFound, models.APIResponse{
+				Status:  "error",
+				Code:    http.StatusNotFound,
+				Message: "User does not have this role",
+				Error: &models.APIError{
+					Type:    "NotFoundError",
+					Details: "User does not have this role assigned",
+				},
+			})
+			return
+		}
+
+		h.logger.Error("Failed to remove role from user", fmt.Errorf("error: %v", err))
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to remove role from user",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "Role removed successfully",
+		Data:    updatedUser,
+	})
 }

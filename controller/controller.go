@@ -6,6 +6,7 @@ import (
 	"fieldfuze-backend/middelware"
 	"fieldfuze-backend/models"
 	"fieldfuze-backend/repository"
+	"fieldfuze-backend/services"
 
 	"fieldfuze-backend/utils/swagger"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 
 type Controller struct {
 	User *UserController
+	Role *RoleController
 }
 
 func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *Controller {
@@ -26,17 +28,29 @@ func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *
 	}
 
 	userRepo := repository.NewUserRepository(dbclient, cfg, log)
+	roleRepo := repository.NewRoleRepository(dbclient, cfg, log)
 	jwtManager := middelware.NewJWTManager(cfg, log, userRepo)
+
+	roleService := services.NewRoleService(roleRepo, log)
 
 	return &Controller{
 		User: NewUserController(ctx, userRepo, log, jwtManager),
+		Role: NewRoleController(ctx, roleService, log),
 	}
 }
 
 func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, r *gin.Engine, basePath string) error {
+	// Apply CORS middleware globally
+	corsMiddleware := middelware.NewCORSMiddleware(config)
+	r.Use(corsMiddleware.CORS())
+
+	// Add request logging middleware
+	loggingMiddleware := middelware.NewLoggingMiddleware(logger.NewLogger(config.LogLevel, config.LogFormat))
+	r.Use(loggingMiddleware.StructuredLogger())
+	r.Use(loggingMiddleware.Recovery())
+	
 	v1 := r.Group(basePath)
 
-	// Auth routes
 	// Health check endpoint (no auth required)
 	v1.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -65,6 +79,7 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 		c.File("./docs/swagger.json")
 	})
 
+	// User group (base path already includes /auth)
 	user := v1.Group("/user")
 
 	// User routes - authentication not required
@@ -80,6 +95,17 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	user.GET("/:id", c.User.jwtManager.AuthMiddleware(), c.User.GetUser)
 	user.GET("/list", c.User.jwtManager.AuthMiddleware(), c.User.GetUserList)
 	user.PATCH("/update/:id", c.User.jwtManager.AuthMiddleware(), c.User.UpdateUser)
+	
+	// Role assignment routes
+	user.POST("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.AssignRole)
+	user.DELETE("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.DetachRole)
+
+	// Role routes under /auth/user/role (matching Swagger documentation)
+	user.GET("/role", c.User.jwtManager.AuthMiddleware(), c.Role.GetRoles)          // Get all roles
+	user.POST("/role", c.User.jwtManager.AuthMiddleware(), c.Role.CreateRole)       // Create role
+	user.GET("/role/:id", c.User.jwtManager.AuthMiddleware(), c.Role.GetRole)       // Get role by ID
+	user.PUT("/role/:id", c.User.jwtManager.AuthMiddleware(), c.Role.UpdateRole)    // Update role
+	user.DELETE("/role/:id", c.User.jwtManager.AuthMiddleware(), c.Role.DeleteRole) // Delete role
 
 	// Create HTTP server
 	srv := &http.Server{
