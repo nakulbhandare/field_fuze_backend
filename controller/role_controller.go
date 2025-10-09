@@ -15,12 +15,12 @@ import (
 
 type RoleController struct {
 	ctx         context.Context
-	roleService *services.RoleService
+	roleService services.RoleServiceInterface
 	logger      logger.Logger
 	validator   *validator.Validate
 }
 
-func NewRoleController(ctx context.Context, roleService *services.RoleService, logger logger.Logger) *RoleController {
+func NewRoleController(ctx context.Context, roleService services.RoleServiceInterface, logger logger.Logger) *RoleController {
 	return &RoleController{
 		ctx:         ctx,
 		roleService: roleService,
@@ -32,7 +32,7 @@ func NewRoleController(ctx context.Context, roleService *services.RoleService, l
 // formatValidationErrors formats validation errors into readable messages
 func (h *RoleController) formatValidationErrors(err error) string {
 	var errorMessages []string
-	
+
 	if validationErrors, ok := err.(validator.ValidationErrors); ok {
 		for _, fieldError := range validationErrors {
 			switch fieldError.Tag() {
@@ -51,7 +51,7 @@ func (h *RoleController) formatValidationErrors(err error) string {
 			}
 		}
 	}
-	
+
 	return strings.Join(errorMessages, "; ")
 }
 

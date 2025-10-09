@@ -17,10 +17,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+// DynamoDBClient implements DatabaseClientInterface
 type DynamoDBClient struct {
 	client *dynamodb.Client
 	config *models.Config
 	logger logger.Logger
+}
+
+// DALContainer implements DALContainerInterface
+type DALContainer struct {
+	databaseClient DatabaseClientInterface
 }
 
 // printPrettyJSON takes any struct or map and prints it as pretty JSON
@@ -30,6 +36,23 @@ func PrintPrettyJSON(data interface{}) string {
 		return fmt.Sprintf("Failed to generate JSON: %v", err)
 	}
 	return string(prettyJSON)
+}
+
+// NewDALContainer creates a new DAL container with DynamoDB client
+func NewDALContainer(cfg *models.Config, log logger.Logger) (DALContainerInterface, error) {
+	dbClient, err := NewDynamoDBClient(cfg, log)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DALContainer{
+		databaseClient: dbClient,
+	}, nil
+}
+
+// GetDatabaseClient returns the database client interface
+func (d *DALContainer) GetDatabaseClient() DatabaseClientInterface {
+	return d.databaseClient
 }
 
 // NewDynamoDBClient creates a new DynamoDB client
@@ -101,7 +124,7 @@ func (db *DynamoDBClient) getSingleItemByPrimaryKey(ctx context.Context, config 
 		return err
 	}
 
-	db.logger.Infof("DynamoDB GetItem output: %s", PrintPrettyJSON(output))
+	// db.logger.Infof("DynamoDB GetItem output: %s", PrintPrettyJSON(output))
 
 	if output.Item == nil {
 		return fmt.Errorf("item not found in %s with %s=%s",
@@ -181,7 +204,10 @@ func (db *DynamoDBClient) PutItem(ctx context.Context, tableName string, item in
 	}
 
 	_, err = db.client.PutItem(ctx, input)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // UpdateItem updates an item in DynamoDB

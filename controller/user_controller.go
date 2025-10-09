@@ -4,7 +4,7 @@ import (
 	"context"
 	"fieldfuze-backend/middelware"
 	"fieldfuze-backend/models"
-	"fieldfuze-backend/repository"
+	"fieldfuze-backend/services"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -15,19 +15,28 @@ import (
 )
 
 type UserController struct {
-	ctx        context.Context
-	userRepo   *repository.UserRepository
-	jwtManager *middelware.JWTManager
-	logger     logger.Logger
+	ctx         context.Context
+	userService services.UserServiceInterface
+	jwtManager  *middelware.JWTManager
+	logger      logger.Logger
 }
 
-func NewUserController(ctx context.Context, userRepo *repository.UserRepository, logger logger.Logger, jwtManager *middelware.JWTManager) *UserController {
+func NewUserController(ctx context.Context, userService services.UserServiceInterface, logger logger.Logger, jwtManager *middelware.JWTManager) *UserController {
 	return &UserController{
-		ctx:        ctx,
-		userRepo:   userRepo,
-		logger:     logger,
-		jwtManager: jwtManager,
+		ctx:         ctx,
+		userService: userService,
+		logger:      logger,
+		jwtManager:  jwtManager,
 	}
+}
+
+// invalidateUserPermissions clears permission cache and logs security events
+func (h *UserController) invalidateUserPermissions(userID, operation string) {
+	// Clear permission cache through JWT manager
+	h.jwtManager.ClearPermissionCache()
+
+	// Log security event for audit trail
+	h.logger.Infof("SECURITY EVENT: Permission cache cleared for user %s due to %s", userID, operation)
 }
 
 // Register handles POST /api/v1/auth/user/register
@@ -58,7 +67,7 @@ func (h *UserController) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.CreateUser(h.ctx, &req)
+	user, err := h.userService.CreateUser(&req)
 	if err != nil {
 		h.logger.Error("Failed to create user", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -97,7 +106,7 @@ func (h *UserController) Register(c *gin.Context) {
 func (h *UserController) GetUser(c *gin.Context) {
 	userID := c.Param("id")
 
-	users, err := h.userRepo.GetUser(userID)
+	user, err := h.userService.GetUserByID(userID)
 	if err != nil {
 		h.logger.Error("Failed to get user by ID", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -112,20 +121,11 @@ func (h *UserController) GetUser(c *gin.Context) {
 		return
 	}
 
-	if len(users) == 0 {
-		c.JSON(http.StatusNotFound, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusNotFound,
-			Message: "User not found",
-		})
-		return
-	}
-
 	c.JSON(http.StatusOK, models.APIResponse{
 		Status:  "success",
 		Code:    http.StatusOK,
 		Message: "User details retrieved successfully",
-		Data:    users[0],
+		Data:    user,
 	})
 }
 
@@ -165,7 +165,7 @@ func (h *UserController) GetUserList(c *gin.Context) {
 	}
 
 	// Get all users
-	allUsers, err := h.userRepo.GetUser("")
+	allUsers, err := h.userService.GetUsers()
 	if err != nil {
 		h.logger.Error("Failed to get user list", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -275,7 +275,7 @@ func (h *UserController) UpdateUser(c *gin.Context) {
 	req.Roles = nil
 
 	// Update user in the repository
-	updatedUser, err := h.userRepo.UpdateUser(userID, &req)
+	updatedUser, err := h.userService.UpdateUser(userID, &req)
 	if err != nil {
 		h.logger.Error("Failed to update user", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -317,8 +317,8 @@ type LoginRequest struct {
 // @Failure 500 {object} models.APIResponse "Internal Server Error - Login failed"
 // @Router /user/login [post]
 func (h *UserController) Login(c *gin.Context) {
-	// This endpoint is handled entirely by the AuthMiddleware
-	// The middleware detects login requests and processes them automatically
+	// Delegate to the JWT manager's login authentication handler
+	h.jwtManager.HandleLogin(c)
 }
 
 // GenerateToken handles POST /api/v1/auth/user/token
@@ -463,7 +463,7 @@ func (h *UserController) AssignRole(c *gin.Context) {
 	}
 
 	// Check if user exists
-	users, err := h.userRepo.GetUser(userID)
+	_, err := h.userService.GetUserByID(userID)
 	if err != nil {
 		h.logger.Error("Failed to get user", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -478,17 +478,8 @@ func (h *UserController) AssignRole(c *gin.Context) {
 		return
 	}
 
-	if len(users) == 0 {
-		c.JSON(http.StatusNotFound, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusNotFound,
-			Message: "User not found",
-		})
-		return
-	}
-
 	// Assign role to user using the existing method
-	updatedUser, err := h.userRepo.AssignRoleToUser(h.ctx, userID, roleID)
+	updatedUser, err := h.userService.AssignRoleToUser(userID, roleID)
 	if err != nil {
 		if err.Error() == "user already has this role" {
 			c.JSON(http.StatusConflict, models.APIResponse{
@@ -528,6 +519,9 @@ func (h *UserController) AssignRole(c *gin.Context) {
 		})
 		return
 	}
+
+	// Clear permission cache for the user after role assignment
+	h.invalidateUserPermissions(userID, "role_assignment")
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Status:  "success",
@@ -585,7 +579,7 @@ func (h *UserController) DetachRole(c *gin.Context) {
 	}
 
 	// Check if user exists
-	users, err := h.userRepo.GetUser(userID)
+	_, err := h.userService.GetUserByID(userID)
 	if err != nil {
 		h.logger.Error("Failed to get user", fmt.Errorf("error: %v", err))
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
@@ -600,17 +594,8 @@ func (h *UserController) DetachRole(c *gin.Context) {
 		return
 	}
 
-	if len(users) == 0 {
-		c.JSON(http.StatusNotFound, models.APIResponse{
-			Status:  "error",
-			Code:    http.StatusNotFound,
-			Message: "User not found",
-		})
-		return
-	}
-
 	// Remove role from user using the existing method
-	updatedUser, err := h.userRepo.RemoveRoleFromUser(h.ctx, userID, roleID)
+	updatedUser, err := h.userService.RemoveRoleFromUser(userID, roleID)
 	if err != nil {
 		if err.Error() == "role not found for user" {
 			c.JSON(http.StatusNotFound, models.APIResponse{
@@ -637,6 +622,9 @@ func (h *UserController) DetachRole(c *gin.Context) {
 		})
 		return
 	}
+
+	// Clear permission cache for the user after role removal
+	h.invalidateUserPermissions(userID, "role_removal")
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Status:  "success",

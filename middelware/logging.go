@@ -3,8 +3,8 @@ package middelware
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"fieldfuze-backend/utils/logger"
+	"github.com/gin-gonic/gin"
 )
 
 // LoggingMiddleware provides request logging

@@ -93,6 +93,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jwt_secret", "your-super-secret-jwt-key-change-this-in-production")
 	v.SetDefault("jwt_expires_in", 30*time.Minute) // Shorter token expiration for better security
 
+	// Security & Permission defaults
+	v.SetDefault("graceful_permission_degradation", true)
+	v.SetDefault("permission_cache_ttl_seconds", 30)
+	v.SetDefault("strict_role_validation", false)
+	v.SetDefault("log_permission_changes", true)
+
 	// AWS defaults
 	v.SetDefault("aws_region", "us-east-1")
 	v.SetDefault("aws_access_key_id", "")
@@ -159,6 +165,23 @@ func flattenNestedConfig(v *viper.Viper) {
 	// JWT section
 	if v.IsSet("jwt.secret") {
 		v.Set("jwt_secret", v.GetString("jwt.secret"))
+	}
+	if v.IsSet("jwt.expires_in") {
+		v.Set("jwt_expires_in", v.GetString("jwt.expires_in"))
+	}
+
+	// Security section
+	if v.IsSet("security.graceful_permission_degradation") {
+		v.Set("graceful_permission_degradation", v.GetBool("security.graceful_permission_degradation"))
+	}
+	if v.IsSet("security.permission_cache_ttl_seconds") {
+		v.Set("permission_cache_ttl_seconds", v.GetInt("security.permission_cache_ttl_seconds"))
+	}
+	if v.IsSet("security.strict_role_validation") {
+		v.Set("strict_role_validation", v.GetBool("security.strict_role_validation"))
+	}
+	if v.IsSet("security.log_permission_changes") {
+		v.Set("log_permission_changes", v.GetBool("security.log_permission_changes"))
 	}
 
 	// AWS section

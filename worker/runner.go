@@ -90,12 +90,20 @@ func (s *Service) GetHealthStatus() map[string]interface{} {
 
 	healthy := status.Status == models.StatusCompleted && status.Success
 
+	// Extract retry count from metadata
+	retryCount := 0
+	if status.Metadata != nil {
+		if rc, ok := status.Metadata["retry_count"].(int); ok {
+			retryCount = rc
+		}
+	}
+
 	return map[string]interface{}{
 		"status":         string(status.Status),
 		"healthy":        healthy,
 		"worker_running": w.IsRunning(),
 		"tables_created": status.TablesCreated,
-		"retry_count":    status.RetryCount,
+		"retry_count":    retryCount,
 		"environment":    status.Environment,
 		"start_time":     status.StartTime,
 		"duration":       status.Duration.String(),

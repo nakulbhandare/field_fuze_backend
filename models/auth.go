@@ -4,14 +4,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-
 // UserContext represents user context in JWT
 type UserContext struct {
 	OrganizationID string `json:"organization_id,omitempty"`
 	CustomerID     string `json:"customer_id,omitempty"`
 	WorkerID       string `json:"worker_id,omitempty"`
 }
-
 
 // RolesConfig represents the structure of roles.json
 type RolesConfig struct {

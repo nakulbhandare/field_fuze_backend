@@ -17,25 +17,34 @@ import (
 )
 
 type Controller struct {
-	User *UserController
-	Role *RoleController
+	User           *UserController
+	Role           *RoleController
+	Infrastructure *InfrastructureController
+	Organization   *OrganizationController
 }
 
 func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *Controller {
-	dbclient, err := dal.NewDynamoDBClient(cfg, log)
+	// Initialize DAL container
+	dalContainer, err := dal.NewDALContainer(cfg, log)
 	if err != nil {
-		log.Fatalf("Failed to initialize DynamoDB client: %v", err)
+		log.Fatalf("Failed to initialize DAL container: %v", err)
 	}
 
-	userRepo := repository.NewUserRepository(dbclient, cfg, log)
-	roleRepo := repository.NewRoleRepository(dbclient, cfg, log)
+	// Initialize repository container
+	repoContainer := repository.NewRepository(dalContainer, cfg, log)
+
+	// Initialize service container
+	serviceContainer := services.NewService(ctx, repoContainer, dalContainer, log, cfg)
+
+	// JWT Manager still needs concrete user repository for authentication
+	userRepo := repository.NewUserRepository(dalContainer.GetDatabaseClient(), cfg, log)
 	jwtManager := middelware.NewJWTManager(cfg, log, userRepo)
 
-	roleService := services.NewRoleService(roleRepo, log)
-
 	return &Controller{
-		User: NewUserController(ctx, userRepo, log, jwtManager),
-		Role: NewRoleController(ctx, roleService, log),
+		User:           NewUserController(ctx, serviceContainer.GetUserService(), log, jwtManager),
+		Role:           NewRoleController(ctx, serviceContainer.GetRoleService(), log),
+		Infrastructure: NewInfrastructureController(ctx, serviceContainer.GetInfrastructureService(), log),
+		Organization:   NewOrganizationController(ctx, serviceContainer.GetOrganizationService(), log),
 	}
 }
 
@@ -48,7 +57,7 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	loggingMiddleware := middelware.NewLoggingMiddleware(logger.NewLogger(config.LogLevel, config.LogFormat))
 	r.Use(loggingMiddleware.StructuredLogger())
 	r.Use(loggingMiddleware.Recovery())
-	
+
 	v1 := r.Group(basePath)
 
 	// Health check endpoint (no auth required)
@@ -82,30 +91,51 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	// User group (base path already includes /auth)
 	user := v1.Group("/user")
 
-	// User routes - authentication not required
+	// Public routes - authentication not required
 	user.POST("/register", c.User.Register)
+	user.POST("/login", c.User.Login)            // No auth needed - users don't have tokens yet
+	user.POST("/token", c.User.GenerateToken)    // No auth needed - token generation endpoint
+	user.POST("/validate", c.User.ValidateToken) // No auth needed - validates tokens manually
 
-	// Login routes - handled by AuthMiddleware
-	user.POST("/login", c.User.jwtManager.AuthMiddleware(), c.User.Login)
-	user.POST("/token", c.User.jwtManager.AuthMiddleware(), c.User.GenerateToken)
-	user.POST("/validate", c.User.ValidateToken)
-
-	// User routes - authentication required
+	// Protected routes - authentication + enhanced authorization required
 	user.POST("/logout", c.User.jwtManager.AuthMiddleware(), c.User.Logout)
-	user.GET("/:id", c.User.jwtManager.AuthMiddleware(), c.User.GetUser)
-	user.GET("/list", c.User.jwtManager.AuthMiddleware(), c.User.GetUserList)
-	user.PATCH("/update/:id", c.User.jwtManager.AuthMiddleware(), c.User.UpdateUser)
-	
-	// Role assignment routes
-	user.POST("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.AssignRole)
-	user.DELETE("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.DetachRole)
+	user.GET("/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_details"), c.User.GetUser)            // Resource-specific: user details with context validation
+	user.GET("/list", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_list"), c.User.GetUserList)          // Resource-specific: user list with department scope
+	user.PATCH("/update/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("user_update"), c.User.UpdateUser) // Resource-specific: user update with ownership check
 
-	// Role routes under /auth/user/role (matching Swagger documentation)
-	user.GET("/role", c.User.jwtManager.AuthMiddleware(), c.Role.GetRoles)          // Get all roles
-	user.POST("/role", c.User.jwtManager.AuthMiddleware(), c.Role.CreateRole)       // Create role
-	user.GET("/role/:id", c.User.jwtManager.AuthMiddleware(), c.Role.GetRole)       // Get role by ID
-	user.PUT("/role/:id", c.User.jwtManager.AuthMiddleware(), c.Role.UpdateRole)    // Update role
-	user.DELETE("/role/:id", c.User.jwtManager.AuthMiddleware(), c.Role.DeleteRole) // Delete role
+	// Role assignment routes - resource-specific permissions with level requirements
+	user.POST("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_assign"), c.User.AssignRole)   // Resource-specific: role assignment with level 7+ requirement
+	user.DELETE("/:user_id/role/:role_id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_assign"), c.User.DetachRole) // Resource-specific: role assignment with level 7+ requirement
+
+	// Role management routes - resource-specific permissions with context validation
+	user.GET("/role", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_list"), c.Role.GetRoles)            // Resource-specific: role list with department scope
+	user.POST("/role", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_create"), c.Role.CreateRole)       // Resource-specific: role creation with level 6+ requirement
+	user.GET("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_list"), c.Role.GetRole)         // Resource-specific: role details with department scope
+	user.PUT("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_update"), c.Role.UpdateRole)    // Resource-specific: role update with level 6+ requirement
+	user.DELETE("/role/:id", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequireResourcePermission("role_delete"), c.Role.DeleteRole) // Resource-specific: role deletion with level 8+ requirement
+
+	// Infrastructure routes (require admin permissions)
+	infra := v1.Group("/infrastructure", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequirePermission("admin"))
+	{
+
+		// Worker-specific management endpoints
+		worker := infra.Group("/worker")
+		{
+			worker.GET("/status", c.Infrastructure.GetWorkerStatus)          // Get worker execution status
+			worker.GET("/health", c.Infrastructure.CheckWorkerHealth)        // Check worker health
+			worker.POST("/restart", c.Infrastructure.RestartWorker)          // Restart worker
+			worker.POST("/auto-restart", c.Infrastructure.AutoRestartWorker) // Auto-restart if unhealthy
+		}
+	}
+
+	organization := v1.Group("/organization", c.User.jwtManager.AuthMiddleware(), c.User.jwtManager.RequirePermission("admin"))
+	{
+		organization.POST("", c.Organization.CreateOrganization)
+		organization.GET("", c.Organization.GetOrganizations)
+		// organization.GET("/:id", c.Organization.GetOrganizationByID)
+		// organization.PUT("/:id", c.Organization.UpdateOrganization)
+		// organization.DELETE("/:id", c.Organization.DeleteOrganization)
+	}
 
 	// Create HTTP server
 	srv := &http.Server{

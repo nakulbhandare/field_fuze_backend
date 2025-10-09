@@ -50,6 +50,76 @@ definitions:
         description: '"success" or "error"'
         type: string
     type: object
+  models.Organization:
+    properties:
+      address:
+        maxLength: 200
+        type: string
+      city:
+        maxLength: 50
+        minLength: 2
+        type: string
+      country:
+        maxLength: 50
+        minLength: 2
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        maxLength: 500
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      industry:
+        maxLength: 50
+        minLength: 2
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      phone:
+        type: string
+      postal_code:
+        description: Business details
+        maxLength: 20
+        minLength: 3
+        type: string
+      state:
+        maxLength: 50
+        minLength: 2
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/models.OrganizationStatus'
+        enum:
+        - active
+        - inactive
+        - suspended
+      updated_at:
+        type: string
+      updated_by:
+        description: Contact information
+        type: string
+    required:
+    - created_by
+    - name
+    - status
+    type: object
+  models.OrganizationStatus:
+    enum:
+    - active
+    - inactive
+    - suspended
+    type: string
+    x-enum-varnames:
+    - OrganizationStatusActive
+    - OrganizationStatusInactive
+    - OrganizationStatusSuspended
   models.RegisterUser:
     description: User registration request with account details
     properties:
@@ -176,6 +246,12 @@ definitions:
     - UserStatusInactive
     - UserStatusSuspended
     - UserStatusPendingVerification
+  models.WorkerRestartRequest:
+    properties:
+      force:
+        description: Force restart even if worker is currently running
+        type: boolean
+    type: object
 host: localhost:8081
 info:
   contact:
@@ -201,6 +277,174 @@ info:
   title: FieldFuze Backend API
   version: "1.0"
 paths:
+  /infrastructure/worker/auto-restart:
+    post:
+      consumes:
+      - application/json
+      description: Check worker health and automatically restart if unhealthy
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Auto-restart check completed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to auto-restart worker
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Auto-restart worker if needed
+      tags:
+      - Infrastructure
+  /infrastructure/worker/health:
+    get:
+      consumes:
+      - application/json
+      description: Check if the infrastructure worker is healthy and get health details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Worker health check completed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to check worker health
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Check worker health
+      tags:
+      - Infrastructure
+  /infrastructure/worker/restart:
+    post:
+      consumes:
+      - application/json
+      description: Restart the infrastructure worker with optional force parameter
+        to restart even if currently running
+      parameters:
+      - description: Worker restart options
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/models.WorkerRestartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Worker restart initiated successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid restart request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "409":
+          description: Conflict - Worker is running and force=false
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to restart worker
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Restart infrastructure worker
+      tags:
+      - Infrastructure
+  /infrastructure/worker/status:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve detailed status of the infrastructure worker including
+        execution state, progress, and health
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Worker status retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized - Authentication required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve worker status
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get worker execution status
+      tags:
+      - Infrastructure
+  /organization:
+    post:
+      consumes:
+      - application/json
+      description: Create a new organization with specified details
+      parameters:
+      - description: Create organization request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Organization'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Organization created successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid organization data
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "409":
+          description: Conflict - Organization already exists
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Organization creation failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new organization
+      tags:
+      - Organization Management
   /user/{id}:
     get:
       consumes:
@@ -420,6 +664,40 @@ paths:
       summary: User logout
       tags:
       - Authentication
+  /user/organization:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of all organizations
+      parameters:
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of organizations per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by organization status (active, inactive, archived)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Organizations retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve organizations
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all organizations
+      tags:
+      - Organization Management
   /user/register:
     post:
       consumes:

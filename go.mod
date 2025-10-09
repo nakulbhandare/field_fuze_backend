@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.10
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.50.2
 	github.com/aws/smithy-go v1.23.0
-	github.com/bytedance/gopkg v0.1.3
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-playground/validator/v10 v10.20.0
 	github.com/golang-jwt/jwt/v5 v5.3.0

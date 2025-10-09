@@ -1,0 +1,203 @@
+{
+  "roles": [
+    {
+      "role_id": "user-list-access",
+      "role_name": "UserListAccess",
+      "level": 3,
+      "permissions": ["read", "view"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "user_list"
+      }
+    },
+    {
+      "role_id": "user-read-access",
+      "role_name": "UserReadAccess",
+      "level": 4,
+      "permissions": ["read", "view"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "user_list,user_details"
+      }
+    },
+    {
+      "role_id": "user-create-access",
+      "role_name": "UserCreateAccess",
+      "level": 6,
+      "permissions": ["read", "view", "create"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "user_list,user_details,user_create"
+      }
+    },
+    {
+      "role_id": "user-update-access",
+      "role_name": "UserUpdateAccess",
+      "level": 5,
+      "permissions": ["read", "view", "update"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "user_list,user_details,user_update"
+      }
+    },
+    {
+      "role_id": "user-delete-access",
+      "role_name": "UserDeleteAccess",
+      "level": 8,
+      "permissions": ["read", "view", "delete"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "user_list,user_details,user_delete"
+      }
+    },
+    {
+      "role_id": "user-manage-access",
+      "role_name": "UserManageAccess",
+      "level": 7,
+      "permissions": ["read", "view", "create", "update", "manage"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "*"
+      }
+    },
+    {
+      "role_id": "user-full-access",
+      "role_name": "UserFullAccess",
+      "level": 8,
+      "permissions": ["read", "view", "create", "update", "delete", "manage"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "*"
+      }
+    },
+    {
+      "role_id": "role-list-access",
+      "role_name": "RoleListAccess",
+      "level": 3,
+      "permissions": ["read", "view"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "role_management",
+        "allowed_resources": "role_list"
+      }
+    },
+    {
+      "role_id": "role-read-access",
+      "role_name": "RoleReadAccess",
+      "level": 4,
+      "permissions": ["read", "view"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "role_management",
+        "allowed_resources": "role_list,role_details"
+      }
+    },
+    {
+      "role_id": "role-create-access",
+      "role_name": "RoleCreateAccess",
+      "level": 6,
+      "permissions": ["read", "view", "create"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "role_management",
+        "allowed_resources": "role_list,role_details,role_create"
+      }
+    },
+    {
+      "role_id": "role-update-access",
+      "role_name": "RoleUpdateAccess",
+      "level": 6,
+      "permissions": ["read", "view", "update"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "role_management",
+        "allowed_resources": "role_list,role_details,role_update"
+      }
+    },
+    {
+      "role_id": "role-delete-access",
+      "role_name": "RoleDeleteAccess",
+      "level": 8,
+      "permissions": ["read", "view", "delete"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "role_management",
+        "allowed_resources": "role_list,role_details,role_delete"
+      }
+    },
+    {
+      "role_id": "role-assign-access",
+      "role_name": "RoleAssignAccess",
+      "level": 7,
+      "permissions": ["read", "view", "manage"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "role_management",
+        "allowed_resources": "role_list,role_details,role_assign"
+      }
+    },
+    {
+      "role_id": "role-full-access",
+      "role_name": "RoleFullAccess",
+      "level": 8,
+      "permissions": ["read", "view", "create", "update", "delete", "manage"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "role_management",
+        "allowed_resources": "*"
+      }
+    },
+    {
+      "role_id": "power-user-access",
+      "role_name": "PowerUserAccess",
+      "level": 7,
+      "permissions": ["read", "view", "create", "update", "manage"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management,role_management",
+        "allowed_resources": "*"
+      }
+    },
+    {
+      "role_id": "administrator-access",
+      "role_name": "AdministratorAccess",
+      "level": 10,
+      "permissions": ["admin"],
+      "context": {
+        "department": "*",
+        "resource_scope": "*",
+        "allowed_resources": "*",
+        "cross_department": "true"
+      }
+    },
+    {
+      "role_id": "read-only-access",
+      "role_name": "ReadOnlyAccess",
+      "level": 2,
+      "permissions": ["read", "view"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management,role_management",
+        "allowed_resources": "user_list,role_list"
+      }
+    },
+    {
+      "role_id": "view-only-access",
+      "role_name": "ViewOnlyAccess",
+      "level": 1,
+      "permissions": ["view"],
+      "context": {
+        "department": "IT",
+        "resource_scope": "user_management",
+        "allowed_resources": "user_list"
+      }
+    }
+  ]
+}

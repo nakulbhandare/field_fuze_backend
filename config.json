@@ -10,6 +10,12 @@
     "secret": "your-super-secret-jwt-key-change-this-in-production",
     "expires_in": "24h"
   },
+  "security": {
+    "graceful_permission_degradation": true,
+    "permission_cache_ttl_seconds": 30,
+    "strict_role_validation": false,
+    "log_permission_changes": true
+  },
   "aws": {
     "region": "us-east-1",
     "access_key_id": "",
@@ -31,5 +37,5 @@
     "requests_per_minute": 100
   },
   "basePath": "/api/v1/auth",
-  "tables": ["users1", "role"]
+  "tables": ["users1", "role", "organization"]
 }
