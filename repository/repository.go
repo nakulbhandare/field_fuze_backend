@@ -38,4 +38,3 @@ func (r *Repository) GetRoleRepository() RoleRepositoryInterface {
 func (r *Repository) GetOrganizationRepository() OrganizationRepositoryInterface {
 	return r.organizationRepository
 }
-
