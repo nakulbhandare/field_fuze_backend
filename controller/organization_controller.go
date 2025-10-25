@@ -238,3 +238,130 @@ func (h *OrganizationController) GetOrganizations(c *gin.Context) {
 		Data:    responseData,
 	})
 }
+
+func (h *OrganizationController) UpdateOrganization(c *gin.Context) {
+	var req models.Organization
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to bind JSON:", err)
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	// Perform struct-level validation
+	if err := h.validator.Struct(&req); err != nil {
+		h.logger.Error("Validation failed:", err)
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Validation failed",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: h.formatValidationErrors(err),
+			},
+		})
+		return
+	}
+
+	claims, exists := c.Get("jwt_claims")
+	if !exists {
+		h.logger.Error("JWT claims not found in context")
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+			Error: &models.APIError{
+				Type:    "AuthenticationError",
+				Details: "User not authenticated",
+			},
+		})
+		return
+	}
+
+	jwtClaims, ok := claims.(*models.JWTClaims)
+	if !ok {
+		h.logger.Error("Invalid JWT claims type")
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Invalid token claims",
+			Error: &models.APIError{
+				Type:    "TokenError",
+				Details: "Invalid token structure",
+			},
+		})
+		return
+	}
+
+	organization, err := h.organizationService.UpdateOrganization(req.ID, &req, jwtClaims.UserID)
+	if err != nil {
+		h.logger.Error("Failed to update organization", err)
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "organization with this name already exists" {
+			statusCode = http.StatusConflict
+		}
+		c.JSON(statusCode, models.APIResponse{
+			Status:  "error",
+			Code:    statusCode,
+			Message: "Failed to create role",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "Organization updated successfully",
+		Data:    organization,
+	})
+
+}
+
+func (h *OrganizationController) DeleteOrganization(c *gin.Context) {
+	organizationID := c.Param("id")
+	if organizationID == "" {
+		h.logger.Error("Organization ID is required")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusBadRequest,
+			Message: "Organization ID is required",
+			Error: &models.APIError{
+				Type:    "ValidationError",
+				Details: "Organization ID cannot be empty",
+			},
+		})
+		return
+	}
+
+	err := h.organizationService.DeleteOrganization(organizationID)
+	if err != nil {
+		h.logger.Error("Failed to delete organization", err)
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to delete organization",
+			Error: &models.APIError{
+				Type:    "DatabaseError",
+				Details: err.Error(),
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Status:  "success",
+		Code:    http.StatusOK,
+		Message: "Organization deleted successfully",
+	})
+}
