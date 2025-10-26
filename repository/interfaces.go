@@ -33,6 +33,7 @@ type RepositoryContainerInterface interface {
 	GetUserRepository() UserRepositoryInterface
 	GetRoleRepository() RoleRepositoryInterface
 	GetOrganizationRepository() OrganizationRepositoryInterface
+	GetJobRepository() JobRepositoryInterface
 }
 
 // OrganizationRepositoryInterface defines the contract for the organization repository
@@ -41,4 +42,13 @@ type OrganizationRepositoryInterface interface {
 	GetOrganization(name string) ([]*models.Organization, error)
 	UpdateOrganization(id string, organization *models.Organization) (*models.Organization, error)
 	DeleteOrganization(id string) error
+}
+
+// JobRepositoryInterface defines the contract for job repository operations
+type JobRepositoryInterface interface {
+	CreateJob(ctx context.Context, job *models.Job) (*models.Job, error)
+	GetJob(key string) ([]*models.Job, error)
+	GetJobsByFilter(filter *models.JobFilter) ([]*models.Job, error)
+	UpdateJob(id string, job *models.Job) (*models.Job, error)
+	DeleteJob(id string) error
 }

@@ -218,5 +218,129 @@
               }
           }
       ]
+  },
+  "jobs": {
+      "AttributeDefinitions": [
+          {
+              "AttributeName": "jobID",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "orgID",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "clientID", 
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "jobStatus",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "jobType",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "createdAt",
+              "AttributeType": "S"
+          }
+      ],
+      "KeySchema": [
+          {
+              "AttributeName": "jobID",
+              "KeyType": "HASH"
+          }
+      ],
+      "ProvisionedThroughput": {
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
+      },
+      "GlobalSecondaryIndexes": [
+          {
+              "IndexName": "orgID-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "orgID",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "clientID-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "clientID",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "jobStatus-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "jobStatus",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "jobType-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "jobType",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "orgID-createdAt-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "orgID",
+                      "KeyType": "HASH"
+                  },
+                  {
+                      "AttributeName": "createdAt",
+                      "KeyType": "RANGE"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          }
+      ]
   }
 }
