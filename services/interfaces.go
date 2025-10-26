@@ -53,10 +53,25 @@ type OrganizationServiceInterface interface {
 	DeleteOrganizationAssignment(id string) error
 }
 
+// JobServiceInterface defines the contract for job service
+type JobServiceInterface interface {
+	CreateJob(ctx context.Context, req *models.CreateJobRequest, createdBy string) (*models.Job, error)
+	GetJobs(filter *models.JobFilter) ([]*models.Job, error)
+	GetJobByID(id string) (*models.Job, error)
+	UpdateJob(ctx context.Context, id string, req *models.UpdateJobRequest, updatedBy string) (*models.Job, error)
+	DeleteJob(id string) error
+	StartJob(ctx context.Context, id string, startedBy string) (*models.Job, error)
+	CompleteJob(ctx context.Context, id string, completedBy string) (*models.Job, error)
+	CancelJob(ctx context.Context, id string, cancelledBy string, reason string) (*models.Job, error)
+	GetJobsByOrganization(orgID string, status models.JobStatus) ([]*models.Job, error)
+	GetJobsByClient(clientID string) ([]*models.Job, error)
+}
+
 // ServiceContainer interface defines the main service container contract
 type ServiceContainerInterface interface {
 	GetUserService() UserServiceInterface
 	GetRoleService() RoleServiceInterface
 	GetInfrastructureService() InfrastructureServiceInterface
 	GetOrganizationService() OrganizationServiceInterface
+	GetJobService() JobServiceInterface
 }
