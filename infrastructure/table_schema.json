@@ -342,5 +342,129 @@
               }
           }
       ]
+  },
+  "crews": {
+      "AttributeDefinitions": [
+          {
+              "AttributeName": "crewID",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "orgID",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "leadTechnicianId",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "createdBy",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "isActive",
+              "AttributeType": "S"
+          },
+          {
+              "AttributeName": "createdAt",
+              "AttributeType": "S"
+          }
+      ],
+      "KeySchema": [
+          {
+              "AttributeName": "crewID",
+              "KeyType": "HASH"
+          }
+      ],
+      "ProvisionedThroughput": {
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
+      },
+      "GlobalSecondaryIndexes": [
+          {
+              "IndexName": "orgID-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "orgID",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "leadTechnicianId-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "leadTechnicianId",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "createdBy-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "createdBy",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "isActive-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "isActive",
+                      "KeyType": "HASH"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          },
+          {
+              "IndexName": "orgID-createdAt-index",
+              "KeySchema": [
+                  {
+                      "AttributeName": "orgID",
+                      "KeyType": "HASH"
+                  },
+                  {
+                      "AttributeName": "createdAt",
+                      "KeyType": "RANGE"
+                  }
+              ],
+              "Projection": {
+                  "ProjectionType": "ALL"
+              },
+              "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+              }
+          }
+      ]
   }
 }

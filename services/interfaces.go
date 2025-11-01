@@ -67,6 +67,19 @@ type JobServiceInterface interface {
 	GetJobsByClient(clientID string) ([]*models.Job, error)
 }
 
+// CrewServiceInterface defines the contract for crew service
+type CrewServiceInterface interface {
+	CreateCrew(ctx context.Context, req *models.CreateCrewRequest, createdBy string) (*models.Crew, error)
+	GetCrews(filter *models.CrewFilter) ([]*models.Crew, error)
+	GetCrewByID(id string) (*models.Crew, error)
+	UpdateCrew(ctx context.Context, id string, req *models.UpdateCrewRequest) (*models.Crew, error)
+	DeleteCrew(id string) error
+	GetCrewsByOrganization(orgID string, isActive *bool) ([]*models.Crew, error)
+	GetCrewsByLeadTechnician(leadTechnicianId string) ([]*models.Crew, error)
+	AddMemberToCrew(ctx context.Context, crewID, memberID string) (*models.Crew, error)
+	RemoveMemberFromCrew(ctx context.Context, crewID, memberID string) (*models.Crew, error)
+}
+
 // ServiceContainer interface defines the main service container contract
 type ServiceContainerInterface interface {
 	GetUserService() UserServiceInterface
@@ -74,4 +87,5 @@ type ServiceContainerInterface interface {
 	GetInfrastructureService() InfrastructureServiceInterface
 	GetOrganizationService() OrganizationServiceInterface
 	GetJobService() JobServiceInterface
+	GetCrewService() CrewServiceInterface
 }

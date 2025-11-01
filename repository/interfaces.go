@@ -34,6 +34,7 @@ type RepositoryContainerInterface interface {
 	GetRoleRepository() RoleRepositoryInterface
 	GetOrganizationRepository() OrganizationRepositoryInterface
 	GetJobRepository() JobRepositoryInterface
+	GetCrewRepository() CrewRepositoryInterface
 }
 
 // OrganizationRepositoryInterface defines the contract for the organization repository
@@ -51,4 +52,13 @@ type JobRepositoryInterface interface {
 	GetJobsByFilter(filter *models.JobFilter) ([]*models.Job, error)
 	UpdateJob(id string, job *models.Job) (*models.Job, error)
 	DeleteJob(id string) error
+}
+
+// CrewRepositoryInterface defines the contract for crew repository operations
+type CrewRepositoryInterface interface {
+	CreateCrew(ctx context.Context, crew *models.Crew) (*models.Crew, error)
+	GetCrew(key string) ([]*models.Crew, error)
+	GetCrewsByFilter(filter *models.CrewFilter) ([]*models.Crew, error)
+	UpdateCrew(id string, crew *models.Crew) (*models.Crew, error)
+	DeleteCrew(id string) error
 }

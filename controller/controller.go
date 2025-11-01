@@ -22,6 +22,7 @@ type Controller struct {
 	Infrastructure *InfrastructureController
 	Organization   *OrganizationController
 	Job            *JobController
+	Crew           *CrewController
 }
 
 func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *Controller {
@@ -47,6 +48,7 @@ func NewController(ctx context.Context, cfg *models.Config, log logger.Logger) *
 		Infrastructure: NewInfrastructureController(ctx, serviceContainer.GetInfrastructureService(), log),
 		Organization:   NewOrganizationController(ctx, serviceContainer.GetOrganizationService(), log),
 		Job:            NewJobController(ctx, serviceContainer.GetJobService(), log),
+		Crew:           NewCrewController(ctx, serviceContainer.GetCrewService(), log),
 	}
 }
 
@@ -153,6 +155,21 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 		jobs.POST("/:id/start", c.User.jwtManager.RequireResourcePermission("job_start"), c.Job.StartJob)            // Start a job - requires FieldWorker+ role
 		jobs.POST("/:id/complete", c.User.jwtManager.RequireResourcePermission("job_complete"), c.Job.CompleteJob)   // Complete a job - requires FieldWorker+ role
 		jobs.POST("/:id/cancel", c.User.jwtManager.RequireResourcePermission("job_cancel"), c.Job.CancelJob)         // Cancel a job - requires JobManager+ role
+	}
+
+	// Crew management routes with role-based access control
+	crews := v1.Group("/crews", c.User.jwtManager.AuthMiddleware())
+	{
+		// Basic CRUD operations with specific role permissions
+		crews.POST("", c.User.jwtManager.RequireResourcePermission("crew_create"), c.Crew.CreateCrew)                    // Create new crew - requires TeamManager+ role
+		crews.GET("", c.User.jwtManager.RequireResourcePermission("crew_list"), c.Crew.GetCrews)                         // Get crews with filtering/pagination - requires TeamViewer+ role
+		crews.GET("/:id", c.User.jwtManager.RequireResourcePermission("crew_details"), c.Crew.GetCrewByID)               // Get specific crew by ID - requires TeamViewer+ role
+		crews.PUT("/:id", c.User.jwtManager.RequireResourcePermission("crew_update"), c.Crew.UpdateCrew)                 // Update crew - requires TeamManager+ role
+		crews.DELETE("/:id", c.User.jwtManager.RequireResourcePermission("crew_delete"), c.Crew.DeleteCrew)              // Delete crew - requires TeamSupervisor+ role
+		
+		// Crew member management with granular permissions
+		crews.POST("/:id/members/:memberId", c.User.jwtManager.RequireResourcePermission("crew_manage_members"), c.Crew.AddMemberToCrew)       // Add member to crew - requires TeamManager+ role
+		crews.DELETE("/:id/members/:memberId", c.User.jwtManager.RequireResourcePermission("crew_manage_members"), c.Crew.RemoveMemberFromCrew) // Remove member from crew - requires TeamManager+ role
 	}
 
 	// Create HTTP server
