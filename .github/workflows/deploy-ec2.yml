@@ -1,9 +1,13 @@
-name: Deploy FieldFuze to AWS EC2
+name: Deploy FieldFuze to AWS EC2 (ECR-based)
 
 on:
   push:
     branches: [ master ]
   workflow_dispatch:
+
+env:
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+  IMAGE_NAME: ${{ secrets.ECR_REPOSITORY_NAME }}
 
 jobs:
   test:
@@ -43,99 +47,86 @@ jobs:
             exit 1
           fi
 
-  deploy:
-    name: Deploy to EC2
+  build_and_push:
+    name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
     needs: test
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate EC2 Secrets
-        run: |
-          if [ -z "${{ secrets.EC2_HOST }}" ]; then
-            echo "❌ Missing secret: EC2_HOST"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_USER }}" ]; then
-            echo "❌ Missing secret: EC2_USER"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then
-            echo "❌ Missing secret: EC2_SSH_PRIVATE_KEY"
-            exit 1
-          fi
-          echo "✅ EC2 secrets verified"
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Create environment file
-        run: |
-          mkdir -p deployment
-          cat > deployment/.env << EOF
-          AWS_REGION=${{ secrets.AWS_REGION }}
-          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          DYNAMODB_TABLE_PREFIX=prod
-          LOG_LEVEL=info
-          LOG_FORMAT=json
-          EOF
-          echo "✅ Environment file created"
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Build, Tag, and Push Image to ECR
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          echo "🚀 Building Docker image..."
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "✅ Image pushed to ECR: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+
+  deploy:
+    name: Deploy on EC2 from ECR
+    runs-on: ubuntu-latest
+    needs: build_and_push
+    steps:
       - name: Setup SSH key
         run: |
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
-          echo "✅ SSH key configured"
-
-      - name: Copy files to EC2
-        run: |
-          echo "📦 Copying deployment files to EC2..."
-          scp -o StrictHostKeyChecking=no -i private_key.pem -r deployment/ \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/
-          echo "✅ Files copied successfully"
 
       - name: Deploy on EC2
         run: |
-          echo "🚀 Starting deployment on EC2..."
-          ssh -o StrictHostKeyChecking=no -i private_key.pem \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            
-            cd ~/deployment
-            
-            echo "🛑 Stopping existing containers..."
+          IMAGE_TAG=${{ needs.build_and_push.outputs.image_tag || github.sha }}
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+            set -e
+
+            echo "🔄 Logging into ECR..."
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+            echo "🛑 Stopping old containers..."
             docker-compose down || true
-            
-            echo "🧹 Cleaning up old Docker images..."
+
+            echo "🧹 Cleaning up old images..."
             docker image prune -f || true
-            
-            echo "🧱 Building and starting containers..."
-            docker-compose up -d --build
-            
-            echo "⏳ Waiting for services to start..."
-            sleep 30
-            
-            echo "🔍 Checking application health..."
+
+            echo "🚀 Pulling latest image from ECR..."
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_NAME }}:${{ github.sha }}
+
+            echo "⚙️ Updating docker-compose.yml with new image..."
+            sed -i "s|image: .*|image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_NAME }}:${{ github.sha }}|" ~/deployment/docker-compose.yml
+
+            echo "🧱 Starting new containers..."
+            docker-compose up -d
+
+            echo "⏳ Waiting for app startup..."
+            sleep 20
+
+            echo "🔍 Health check..."
             if curl -fsS http://localhost:8081/api/v1/auth/health; then
-              echo "✅ Application is running successfully"
+              echo "✅ App running successfully!"
             else
-              echo "❌ Application failed to start"
+              echo "❌ App failed to start"
               docker-compose logs
               exit 1
             fi
           EOF
 
-      - name: Cleanup SSH key
+      - name: Cleanup
         if: always()
-        run: |
-          rm -f private_key.pem
-          echo "🧽 Cleaned up SSH key"
+        run: rm -f private_key.pem
 
       - name: Deployment Summary
         run: |
-          echo "🎉 FieldFuze deployment completed successfully!"
-          echo ""
-          echo "📋 Access URLs:"
-          echo "  - API Health: http://${{ secrets.EC2_HOST }}:8081/api/v1/auth/health"
-          echo "  - Swagger UI: http://${{ secrets.EC2_HOST }}:8081/swagger"
-          echo "  - Main API: http://${{ secrets.EC2_HOST }}:8081/api/v1/auth"
+          echo "🎉 FieldFuze deployed successfully via ECR!"
+          echo "🌐 API: http://${{ secrets.EC2_HOST }}:8081"
+          echo "📖 Swagger: http://${{ secrets.EC2_HOST }}:8081/swagger"
