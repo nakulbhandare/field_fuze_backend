@@ -10,38 +10,38 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.23.2'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.2'
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-    - name: Run tests
-      run: go test -v ./...
+      - name: Run tests
+        run: go test -v ./...
 
-    - name: Run go vet
-      run: go vet ./...
+      - name: Run go vet
+        run: go vet ./...
 
-    - name: Check go formatting
-      run: |
-        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-          echo "The following files are not properly formatted:"
-          gofmt -s -l .
-          exit 1
-        fi
+      - name: Check go formatting
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files are not properly formatted:"
+            gofmt -s -l .
+            exit 1
+          fi
 
   deploy:
     name: Deploy to EC2
@@ -49,72 +49,93 @@ jobs:
     needs: test
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Create environment file
-      run: |
-        cat > deployment/.env << EOF
-        AWS_REGION=${{ secrets.AWS_REGION }}
-        AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        JWT_SECRET=${{ secrets.JWT_SECRET }}
-        DYNAMODB_TABLE_PREFIX=prod
-        LOG_LEVEL=info
-        LOG_FORMAT=json
-        EOF
-
-    - name: Setup SSH key
-      run: |
-        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private_key.pem
-        chmod 600 private_key.pem
-
-    - name: Copy files to EC2
-      run: |
-        scp -o StrictHostKeyChecking=no -i private_key.pem -r deployment/ \
-          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/
-
-    - name: Deploy on EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no -i private_key.pem \
-          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          
-          # Navigate to deployment directory
-          cd ~/deployment
-          
-          # Stop existing containers
-          docker-compose down || true
-          
-          # Remove old images to save space
-          docker image prune -f || true
-          
-          # Build and start the application
-          docker-compose up -d --build
-          
-          # Wait for application to start
-          sleep 30
-          
-          # Check if application is running
-          if curl -f http://localhost:8081/api/v1/auth/health; then
-            echo "✅ Application is running successfully"
-            echo "🌐 API: http://${{ secrets.EC2_HOST }}:8081"
-            echo "📖 Swagger: http://${{ secrets.EC2_HOST }}:8081/swagger"
-          else
-            echo "❌ Application failed to start"
-            docker-compose logs
+      - name: Validate EC2 Secrets
+        run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ]; then
+            echo "❌ Missing secret: EC2_HOST"
             exit 1
           fi
-        EOF
+          if [ -z "${{ secrets.EC2_USER }}" ]; then
+            echo "❌ Missing secret: EC2_USER"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ Missing secret: EC2_SSH_PRIVATE_KEY"
+            exit 1
+          fi
+          echo "✅ EC2 secrets verified"
 
-    - name: Cleanup SSH key
-      if: always()
-      run: rm -f private_key.pem
+      - name: Create environment file
+        run: |
+          mkdir -p deployment
+          cat > deployment/.env << EOF
+          AWS_REGION=${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          DYNAMODB_TABLE_PREFIX=prod
+          LOG_LEVEL=info
+          LOG_FORMAT=json
+          EOF
+          echo "✅ Environment file created"
 
-    - name: Deployment Summary
-      run: |
-        echo "🎉 FieldFuze deployment completed!"
-        echo ""
-        echo "📋 Access URLs:"
-        echo "  - API Health: http://${{ secrets.EC2_HOST }}:8081/api/v1/auth/health"
-        echo "  - Swagger UI: http://${{ secrets.EC2_HOST }}:8081/swagger"
-        echo "  - Main API: http://${{ secrets.EC2_HOST }}:8081/api/v1/auth"
+      - name: Setup SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          echo "✅ SSH key configured"
+
+      - name: Copy files to EC2
+        run: |
+          echo "📦 Copying deployment files to EC2..."
+          scp -o StrictHostKeyChecking=no -i private_key.pem -r deployment/ \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/
+          echo "✅ Files copied successfully"
+
+      - name: Deploy on EC2
+        run: |
+          echo "🚀 Starting deployment on EC2..."
+          ssh -o StrictHostKeyChecking=no -i private_key.pem \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            
+            cd ~/deployment
+            
+            echo "🛑 Stopping existing containers..."
+            docker-compose down || true
+            
+            echo "🧹 Cleaning up old Docker images..."
+            docker image prune -f || true
+            
+            echo "🧱 Building and starting containers..."
+            docker-compose up -d --build
+            
+            echo "⏳ Waiting for services to start..."
+            sleep 30
+            
+            echo "🔍 Checking application health..."
+            if curl -fsS http://localhost:8081/api/v1/auth/health; then
+              echo "✅ Application is running successfully"
+            else
+              echo "❌ Application failed to start"
+              docker-compose logs
+              exit 1
+            fi
+          EOF
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f private_key.pem
+          echo "🧽 Cleaned up SSH key"
+
+      - name: Deployment Summary
+        run: |
+          echo "🎉 FieldFuze deployment completed successfully!"
+          echo ""
+          echo "📋 Access URLs:"
+          echo "  - API Health: http://${{ secrets.EC2_HOST }}:8081/api/v1/auth/health"
+          echo "  - Swagger UI: http://${{ secrets.EC2_HOST }}:8081/swagger"
+          echo "  - Main API: http://${{ secrets.EC2_HOST }}:8081/api/v1/auth"
