@@ -17,7 +17,7 @@ type Repository struct {
 // NewRepository creates a new repository container with all dependencies injected
 func NewRepository(dalContainer dal.DALContainerInterface, cfg *models.Config, log logger.Logger) RepositoryContainerInterface {
 	dbClient := dalContainer.GetDatabaseClient()
-	
+
 	return &Repository{
 		userRepository:         NewUserRepository(dbClient, cfg, log),
 		roleRepository:         NewRoleRepository(dbClient, cfg, log),

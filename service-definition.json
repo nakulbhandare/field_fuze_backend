@@ -1,0 +1,14 @@
+{
+    "serviceName": "fieldfuze-backend-service",
+    "cluster": "fieldfuze-cluster",
+    "taskDefinition": "arn:aws:ecs:us-east-1:043220466823:task-definition/fieldfuze-backend:1",
+    "desiredCount": 1,
+    "launchType": "FARGATE",
+    "networkConfiguration": {
+        "awsvpcConfiguration": {
+            "subnets": [],
+            "securityGroups": [],
+            "assignPublicIp": "ENABLED"
+        }
+    }
+}

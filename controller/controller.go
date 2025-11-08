@@ -143,16 +143,16 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	jobs := v1.Group("/jobs", c.User.jwtManager.AuthMiddleware())
 	{
 		// Basic CRUD operations with specific role permissions
-		jobs.POST("", c.User.jwtManager.RequireResourcePermission("job_create"), c.Job.CreateJob)                    // Create new job - requires JobDispatcher+ role
-		jobs.GET("", c.User.jwtManager.RequireResourcePermission("job_list"), c.Job.GetJobs)                         // Get jobs with filtering/pagination - requires JobViewer+ role
-		jobs.GET("/:id", c.User.jwtManager.RequireResourcePermission("job_details"), c.Job.GetJobByID)               // Get specific job by ID - requires JobViewer+ role
-		jobs.PUT("/:id", c.User.jwtManager.RequireResourcePermission("job_update"), c.Job.UpdateJob)                 // Update job - requires FieldWorker+ role
-		jobs.DELETE("/:id", c.User.jwtManager.RequireResourcePermission("job_delete"), c.Job.DeleteJob)              // Delete job - requires JobSupervisor+ role
-		
+		jobs.POST("", c.User.jwtManager.RequireResourcePermission("job_create"), c.Job.CreateJob)       // Create new job - requires JobDispatcher+ role
+		jobs.GET("", c.User.jwtManager.RequireResourcePermission("job_list"), c.Job.GetJobs)            // Get jobs with filtering/pagination - requires JobViewer+ role
+		jobs.GET("/:id", c.User.jwtManager.RequireResourcePermission("job_details"), c.Job.GetJobByID)  // Get specific job by ID - requires JobViewer+ role
+		jobs.PUT("/:id", c.User.jwtManager.RequireResourcePermission("job_update"), c.Job.UpdateJob)    // Update job - requires FieldWorker+ role
+		jobs.DELETE("/:id", c.User.jwtManager.RequireResourcePermission("job_delete"), c.Job.DeleteJob) // Delete job - requires JobSupervisor+ role
+
 		// Job status management with granular permissions
-		jobs.POST("/:id/start", c.User.jwtManager.RequireResourcePermission("job_start"), c.Job.StartJob)            // Start a job - requires FieldWorker+ role
-		jobs.POST("/:id/complete", c.User.jwtManager.RequireResourcePermission("job_complete"), c.Job.CompleteJob)   // Complete a job - requires FieldWorker+ role
-		jobs.POST("/:id/cancel", c.User.jwtManager.RequireResourcePermission("job_cancel"), c.Job.CancelJob)         // Cancel a job - requires JobManager+ role
+		jobs.POST("/:id/start", c.User.jwtManager.RequireResourcePermission("job_start"), c.Job.StartJob)          // Start a job - requires FieldWorker+ role
+		jobs.POST("/:id/complete", c.User.jwtManager.RequireResourcePermission("job_complete"), c.Job.CompleteJob) // Complete a job - requires FieldWorker+ role
+		jobs.POST("/:id/cancel", c.User.jwtManager.RequireResourcePermission("job_cancel"), c.Job.CancelJob)       // Cancel a job - requires JobManager+ role
 	}
 
 	// Create HTTP server
