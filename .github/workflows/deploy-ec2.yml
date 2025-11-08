@@ -121,24 +121,38 @@ jobs:
           echo "🚀 Pulling latest image from ECR..."
           docker pull $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
           
+          echo "⚙️ Creating production environment file..."
+          cat > .env << 'ENV_EOF'
+          APP_ENV=production
+          APP_HOST=0.0.0.0
+          APP_PORT=8081
+          AWS_REGION=${AWS_REGION:-us-east-1}
+          AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+          AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+          JWT_SECRET=${JWT_SECRET}
+          DYNAMODB_TABLE_PREFIX=${DYNAMODB_TABLE_PREFIX:-prod}
+          LOG_LEVEL=${LOG_LEVEL:-info}
+          LOG_FORMAT=${LOG_FORMAT:-json}
+          ENV_EOF
+          
           echo "⚙️ Creating docker-compose.yml with ECR image..."
           cat > docker-compose.yml << 'COMPOSE_EOF'
-          version: '3.8'
-          
           services:
             fieldfuze-backend:
               image: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
               container_name: fieldfuze-backend
               ports:
                 - "8081:8081"
+              env_file:
+                - .env
               environment:
-                - APP_ENV=production
-                - APP_HOST=0.0.0.0
-                - APP_PORT=8081
+                - APP_ENV=${APP_ENV:-production}
+                - APP_HOST=${APP_HOST:-0.0.0.0}
+                - APP_PORT=${APP_PORT:-8081}
                 - AWS_REGION=${AWS_REGION:-us-east-1}
                 - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
                 - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-                - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+                - JWT_SECRET=${JWT_SECRET}
                 - DYNAMODB_TABLE_PREFIX=${DYNAMODB_TABLE_PREFIX:-prod}
                 - LOG_LEVEL=${LOG_LEVEL:-info}
                 - LOG_FORMAT=${LOG_FORMAT:-json}
@@ -174,7 +188,18 @@ jobs:
           
           # Copy and execute script on EC2
           scp -o StrictHostKeyChecking=no -i private_key.pem deploy_script.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "chmod +x ~/deploy_script.sh && ECR_REGISTRY='$ECR_REGISTRY' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$IMAGE_TAG' ~/deploy_script.sh"
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "chmod +x ~/deploy_script.sh && \
+          ECR_REGISTRY='$ECR_REGISTRY' \
+          IMAGE_NAME='$IMAGE_NAME' \
+          IMAGE_TAG='$IMAGE_TAG' \
+          AWS_REGION='${{ secrets.AWS_REGION }}' \
+          AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID }}' \
+          AWS_SECRET_ACCESS_KEY='${{ secrets.AWS_SECRET_ACCESS_KEY }}' \
+          JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+          DYNAMODB_TABLE_PREFIX='${{ secrets.DYNAMODB_TABLE_PREFIX }}' \
+          LOG_LEVEL='${{ secrets.LOG_LEVEL }}' \
+          LOG_FORMAT='${{ secrets.LOG_FORMAT }}' \
+          ~/deploy_script.sh"
 
       - name: Cleanup
         if: always()

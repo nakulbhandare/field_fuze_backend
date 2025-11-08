@@ -41,6 +41,10 @@ COPY --from=builder /app/main .
 # Copy config file if it exists
 COPY --from=builder /app/config.json* ./
 
+# Copy required directories and files
+COPY --from=builder /app/docs/ ./docs/
+COPY --from=builder /app/infrastructure/ ./infrastructure/
+
 # Change ownership
 RUN chown -R appuser:appuser /app
 
