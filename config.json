@@ -7,7 +7,7 @@
     "port": "8081"
   },
   "jwt": {
-    "secret": "your-super-secret-jwt-key-change-this-in-production",
+    "secret": "UkPd0+RXTNFqjN8vSUJP2u97Vm6CD1aaVenZ0PkWhtTxu1ZPFgwO4ziTNFX5H2DNiIjcpdqBWAGZ6fJ2quZeJA==",
     "expires_in": "24h"
   },
   "security": {
