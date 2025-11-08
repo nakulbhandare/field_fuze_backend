@@ -88,44 +88,87 @@ jobs:
           chmod 600 private_key.pem
 
       - name: Deploy on EC2
+        env:
+          IMAGE_TAG: ${{ needs.build_and_push.outputs.image_tag }}
+          ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
-          IMAGE_TAG=${{ needs.build_and_push.outputs.image_tag }}
           echo "Using IMAGE_TAG=$IMAGE_TAG"
-
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
-            set -e
-
-            echo "🔄 Logging into ECR..."
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
-
-            echo "🛑 Stopping old containers..."
-            cd ~/ || exit 1
-            docker-compose down || true
-
-            echo "🧹 Cleaning up old images..."
-            docker image prune -f || true
-
-            echo "🚀 Pulling latest image from ECR..."
-            docker pull $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-
-            echo "⚙️ Updating docker-compose.yml with new image..."
-            sed -i "s|image: .*|image: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG|" docker-compose.yml
-
-            echo "🧱 Starting new containers..."
-            docker-compose up -d
-
-            echo "⏳ Waiting for app startup..."
-            sleep 20
-
-            echo "🔍 Checking application health..."
-            if curl -fsS http://localhost:8081/api/v1/auth/health; then
-              echo "✅ App running successfully!"
-            else
-              echo "❌ App failed to start"
-              docker-compose logs
-              exit 1
-            fi
+          echo "Using ECR_REGISTRY=$ECR_REGISTRY"
+          echo "Using IMAGE_NAME=$IMAGE_NAME"
+          
+          # Create deployment script
+          cat > deploy_script.sh << 'EOF'
+          set -e
+          
+          echo "🔄 Logging into ECR..."
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+          
+          echo "🛑 Stopping old containers..."
+          mkdir -p ~/fieldfuze-app
+          cd ~/fieldfuze-app
+          docker-compose down || true
+          
+          echo "🧹 Cleaning up old images..."
+          docker image prune -f || true
+          
+          echo "🚀 Pulling latest image from ECR..."
+          docker pull $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          
+          echo "⚙️ Creating docker-compose.yml with ECR image..."
+          cat > docker-compose.yml << 'COMPOSE_EOF'
+          version: '3.8'
+          
+          services:
+            fieldfuze-backend:
+              image: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+              container_name: fieldfuze-backend
+              ports:
+                - "8081:8081"
+              environment:
+                - APP_ENV=production
+                - APP_HOST=0.0.0.0
+                - APP_PORT=8081
+                - AWS_REGION=${AWS_REGION:-us-east-1}
+                - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+                - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+                - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+                - DYNAMODB_TABLE_PREFIX=${DYNAMODB_TABLE_PREFIX:-prod}
+                - LOG_LEVEL=${LOG_LEVEL:-info}
+                - LOG_FORMAT=${LOG_FORMAT:-json}
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:8081/api/v1/auth/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 40s
+              logging:
+                driver: "json-file"
+                options:
+                  max-size: "10m"
+                  max-file: "3"
+          COMPOSE_EOF
+          
+          echo "🧱 Starting new containers..."
+          docker-compose up -d
+          
+          echo "⏳ Waiting for app startup..."
+          sleep 20
+          
+          echo "🔍 Checking application health..."
+          if curl -fsS http://localhost:8081/api/v1/auth/health; then
+            echo "✅ App running successfully!"
+          else
+            echo "❌ App failed to start"
+            docker-compose logs
+            exit 1
+          fi
           EOF
+          
+          # Copy and execute script on EC2
+          scp -o StrictHostKeyChecking=no -i private_key.pem deploy_script.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "chmod +x ~/deploy_script.sh && ECR_REGISTRY='$ECR_REGISTRY' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$IMAGE_TAG' ~/deploy_script.sh"
 
       - name: Cleanup
         if: always()
@@ -136,3 +179,5 @@ jobs:
           echo "🎉 FieldFuze deployed successfully!"
           echo "🌐 API: http://${{ secrets.EC2_HOST }}:8081"
           echo "📖 Swagger: http://${{ secrets.EC2_HOST }}:8081/swagger"
+
+          
