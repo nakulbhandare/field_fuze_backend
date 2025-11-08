@@ -72,7 +72,7 @@ jobs:
         run: |
           IMAGE_TAG=${{ github.sha }}
           echo "🚀 Building Docker image using deployment/Dockerfile..."
-          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f deployment/Dockerfile deployment/
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f deployment/Dockerfile .
           docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "✅ Image pushed to ECR: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
