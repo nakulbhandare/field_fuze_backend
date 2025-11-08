@@ -18,6 +18,7 @@ import (
 var config *models.Config
 
 func Init() {
+	fmt.Println("Inside Init :: ")
 	var err error
 	config, err = utils.GetConfig()
 	if err != nil {

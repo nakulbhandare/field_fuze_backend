@@ -15,7 +15,9 @@ import (
 
 // GetConfig read the configuration from environment variables or config files
 func GetConfig() (*models.Config, error) {
+	fmt.Println("Inside GetConfig :: before Load() call")
 	config, err := Load()
+	fmt.Println("Inside GetConfig :: after Load() call", config, err)
 	if err != nil {
 		return nil, fmt.Errorf("error loading config: %w", err)
 	}
