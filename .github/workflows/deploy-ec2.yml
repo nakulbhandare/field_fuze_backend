@@ -71,8 +71,8 @@ jobs:
         id: meta
         run: |
           IMAGE_TAG=${{ github.sha }}
-          echo "🚀 Building Docker image using deployment/Dockerfile..."
-          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f deployment/Dockerfile .
+          echo "🚀 Building Docker image using root Dockerfile..."
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "✅ Image pushed to ECR: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
@@ -99,7 +99,7 @@ jobs:
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
             echo "🛑 Stopping old containers..."
-            cd ~/deployment || exit 1
+            cd ~/ || exit 1
             docker-compose down || true
 
             echo "🧹 Cleaning up old images..."
