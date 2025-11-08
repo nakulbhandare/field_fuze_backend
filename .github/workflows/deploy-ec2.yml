@@ -42,7 +42,7 @@ jobs:
       - name: Check go formatting
         run: |
           if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "The following files are not properly formatted:"
+            echo "❌ The following files are not properly formatted:"
             gofmt -s -l .
             exit 1
           fi
@@ -51,6 +51,8 @@ jobs:
     name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
     needs: test
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,12 +68,13 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, Tag, and Push Image to ECR
+        id: meta
         run: |
           IMAGE_TAG=${{ github.sha }}
-          echo "🚀 Building Docker image..."
-          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          echo "🚀 Building Docker image using deployment/Dockerfile..."
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f deployment/Dockerfile deployment/
           docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "✅ Image pushed to ECR: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
 
   deploy:
@@ -86,24 +89,27 @@ jobs:
 
       - name: Deploy on EC2
         run: |
-          IMAGE_TAG=${{ needs.build_and_push.outputs.image_tag || github.sha }}
+          IMAGE_TAG=${{ needs.build_and_push.outputs.image_tag }}
+          echo "Using IMAGE_TAG=$IMAGE_TAG"
+
           ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
 
             echo "🔄 Logging into ECR..."
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
             echo "🛑 Stopping old containers..."
+            cd ~/deployment || exit 1
             docker-compose down || true
 
             echo "🧹 Cleaning up old images..."
             docker image prune -f || true
 
             echo "🚀 Pulling latest image from ECR..."
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_NAME }}:${{ github.sha }}
+            docker pull $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
 
             echo "⚙️ Updating docker-compose.yml with new image..."
-            sed -i "s|image: .*|image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_NAME }}:${{ github.sha }}|" ~/deployment/docker-compose.yml
+            sed -i "s|image: .*|image: $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG|" docker-compose.yml
 
             echo "🧱 Starting new containers..."
             docker-compose up -d
@@ -111,7 +117,7 @@ jobs:
             echo "⏳ Waiting for app startup..."
             sleep 20
 
-            echo "🔍 Health check..."
+            echo "🔍 Checking application health..."
             if curl -fsS http://localhost:8081/api/v1/auth/health; then
               echo "✅ App running successfully!"
             else
@@ -127,6 +133,6 @@ jobs:
 
       - name: Deployment Summary
         run: |
-          echo "🎉 FieldFuze deployed successfully via ECR!"
+          echo "🎉 FieldFuze deployed successfully!"
           echo "🌐 API: http://${{ secrets.EC2_HOST }}:8081"
           echo "📖 Swagger: http://${{ secrets.EC2_HOST }}:8081/swagger"
