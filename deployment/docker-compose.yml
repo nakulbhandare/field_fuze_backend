@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   fieldfuze-backend:
-    build:
-      context: ..
-      dockerfile: deployment/Dockerfile
+    image: placeholder-image
     container_name: fieldfuze-backend
     ports:
       - "80:8081"
