@@ -2,7 +2,6 @@ package models
 
 import "time"
 
-
 // ServiceRestartResult represents the result of a service restart operation
 type ServiceRestartResult struct {
 	ServiceName string    `json:"service_name"`

@@ -102,31 +102,31 @@ func (r *JobRepository) GetJobsByFilter(filter *models.JobFilter) ([]*models.Job
 	var jobs []*models.Job
 	var err error
 
-	// Query by organization 
+	// Query by organization
 	if filter.OrgID != "" {
 		// Use simple orgID index (date filtering will be done post-query)
-		err = r.db.QueryByIndex(ctx, 
-			r.config.DynamoDBTablePrefix+"_jobs", 
-			"orgID-index", 
-			"orgID", filter.OrgID, 
+		err = r.db.QueryByIndex(ctx,
+			r.config.DynamoDBTablePrefix+"_jobs",
+			"orgID-index",
+			"orgID", filter.OrgID,
 			&jobs)
 	} else if filter.ClientID != "" {
-		err = r.db.QueryByIndex(ctx, 
-			r.config.DynamoDBTablePrefix+"_jobs", 
-			"clientID-index", 
-			"clientID", filter.ClientID, 
+		err = r.db.QueryByIndex(ctx,
+			r.config.DynamoDBTablePrefix+"_jobs",
+			"clientID-index",
+			"clientID", filter.ClientID,
 			&jobs)
 	} else if filter.JobStatus != "" {
-		err = r.db.QueryByIndex(ctx, 
-			r.config.DynamoDBTablePrefix+"_jobs", 
-			"jobStatus-index", 
-			"jobStatus", string(filter.JobStatus), 
+		err = r.db.QueryByIndex(ctx,
+			r.config.DynamoDBTablePrefix+"_jobs",
+			"jobStatus-index",
+			"jobStatus", string(filter.JobStatus),
 			&jobs)
 	} else if filter.JobType != "" {
-		err = r.db.QueryByIndex(ctx, 
-			r.config.DynamoDBTablePrefix+"_jobs", 
-			"jobType-index", 
-			"jobType", string(filter.JobType), 
+		err = r.db.QueryByIndex(ctx,
+			r.config.DynamoDBTablePrefix+"_jobs",
+			"jobType-index",
+			"jobType", string(filter.JobType),
 			&jobs)
 	} else {
 		// Scan all jobs (use with caution in production)
