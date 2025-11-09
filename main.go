@@ -56,7 +56,7 @@ func Init() {
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host 
+// @host
 // @BasePath /api/v1/auth
 
 // @securityDefinitions.apikey BearerAuth
