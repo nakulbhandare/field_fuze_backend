@@ -87,6 +87,8 @@ func (c *Controller) RegisterRoutes(ctx context.Context, config *models.Config, 
 	// Swagger JSON spec
 	r.GET("/swagger/doc.json", func(c *gin.Context) {
 		c.Header("Content-Type", "application/json")
+		c.Header("Access-Control-Allow-Origin", "*") // Add this!
+
 		c.File("./docs/swagger.json")
 	})
 
