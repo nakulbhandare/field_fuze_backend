@@ -1,0 +1,166 @@
+run:
+  timeout: 10m
+  tests: true
+  modules-download-mode: readonly
+  build-tags:
+    - integration
+  skip-dirs:
+    - vendor
+    - third_party
+
+output:
+  sort-results: true
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment  # Too noisy for this codebase
+
+  gocyclo:
+    min-complexity: 10
+
+  goimports:
+    local-prefixes: fieldfuze-backend
+
+  golint:
+    min-confidence: 0.8
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  lll:
+    line-length: 120
+
+  unused:
+    go: "1.23"
+
+  unparam:
+    check-exported: false
+
+  nakedret:
+    max-func-lines: 30
+
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+      - experimental
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+
+  gocognit:
+    min-complexity: 15
+
+  funlen:
+    lines: 80
+    statements: 50
+
+  nestif:
+    min-complexity: 4
+
+  godox:
+    keywords:
+      - NOTE
+      - OPTIMIZE
+      - HACK
+      - TODO
+      - BUG
+      - FIXME
+
+  dogsled:
+    max-blank-identifiers: 2
+
+  whitespace:
+    multi-if: false
+    multi-func: false
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - gocritic
+    - gocyclo
+    - gosec
+    - unconvert
+    - unparam
+    - nakedret
+    - prealloc
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
+        - gocognit
+
+    # Exclude specific rules for generated files
+    - path: docs/docs.go
+      linters:
+        - gochecknoglobals
+        - gochecknoinits
+        - lll
+
+    # Exclude some staticcheck messages
+    - linters:
+        - staticcheck
+      text: "SA9003:"
+
+    # Exclude lll issues for long lines with go:generate
+    - linters:
+        - lll
+      source: "^//go:generate "
+
+    # Exclude godox for TODO comments in tests
+    - path: _test\.go
+      linters:
+        - godox
+
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+
+severity:
+  default-severity: error
+  case-sensitive: false
+  rules:
+    - linters:
+        - dupl
+      severity: info
+    - linters:
+        - gocritic
+      severity: warning

@@ -1,0 +1,113 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
+      - id: check-symlinks
+
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go fmt
+        entry: gofmt
+        language: system
+        args: [-w, -s]
+        files: \.go$
+
+      - id: go-vet
+        name: go vet
+        entry: go
+        language: system
+        args: [vet, ./...]
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: go
+        language: system
+        args: [mod, tidy]
+        files: (go\.mod|go\.sum)$
+        pass_filenames: false
+
+      - id: golangci-lint
+        name: golangci-lint
+        entry: golangci-lint
+        language: system
+        args: [run, --timeout=10m]
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-test
+        name: go test
+        entry: go
+        language: system
+        args: [test, -v, -race, -coverprofile=coverage.out, ./...]
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-test-coverage
+        name: go test coverage check
+        entry: bash
+        language: system
+        args:
+          - -c
+          - |
+            if [ -f coverage.out ]; then
+              COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print substr($3, 1, length($3)-1)}')
+              echo "Current coverage: ${COVERAGE}%"
+              if (( $(echo "$COVERAGE < 95" | bc -l) )); then
+                echo "❌ Coverage ${COVERAGE}% is below 95% threshold"
+                exit 1
+              fi
+              echo "✅ Coverage ${COVERAGE}% meets 95% threshold"
+            fi
+        files: \.go$
+        pass_filenames: false
+
+      - id: gocyclo
+        name: gocyclo complexity check
+        entry: bash
+        language: system
+        args:
+          - -c
+          - |
+            if command -v gocyclo &> /dev/null; then
+              gocyclo -over 10 .
+              if [ $? -ne 0 ]; then
+                echo "❌ Code complexity is too high. Please refactor functions with complexity > 10"
+                exit 1
+              fi
+              echo "✅ Code complexity is within acceptable limits"
+            else
+              echo "⚠️ gocyclo not installed. Install with: go install github.com/fzipp/gocyclo/cmd/gocyclo@latest"
+            fi
+        files: \.go$
+        pass_filenames: false
+
+      - id: gosec
+        name: gosec security check
+        entry: bash
+        language: system
+        args:
+          - -c
+          - |
+            if command -v gosec &> /dev/null; then
+              gosec -quiet ./...
+              if [ $? -ne 0 ]; then
+                echo "❌ Security issues found. Please review and fix"
+                exit 1
+              fi
+              echo "✅ No security issues found"
+            else
+              echo "⚠️ gosec not installed. Install with: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest"
+            fi
+        files: \.go$
+        pass_filenames: false
