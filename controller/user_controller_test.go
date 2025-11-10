@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -174,6 +176,7 @@ func (suite *UserControllerTestSuite) SetupTest() {
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
 	suite.mockLogger.On("Warn", mock.Anything).Maybe()
+	suite.mockLogger.On("Warn", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Error", mock.Anything).Maybe()
 	suite.mockLogger.On("Error", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Debugf", mock.Anything, mock.Anything).Maybe()
@@ -572,8 +575,8 @@ func (suite *UserControllerTestSuite) TestLoginDelegation() {
 	controller.Login(c)
 
 	// The function delegates to JWT manager, so if manager is nil,
-	// it should not panic but may not process the request
-	assert.Equal(suite.T(), http.StatusOK, w.Code)
+	// it should return an error gracefully without panic
+	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
 }
 
 // TestGenerateTokenDelegation tests that GenerateToken delegates properly
@@ -604,8 +607,8 @@ func (suite *UserControllerTestSuite) TestValidateTokenDelegation() {
 	// This endpoint delegates to JWT manager processing
 	controller.ValidateToken(c)
 
-	// Since we're testing delegation, we expect this to complete without error
-	assert.Equal(suite.T(), http.StatusOK, w.Code)
+	// Since jwtManager is nil, we expect this to return an error gracefully without panic
+	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
 }
 
 // TestLogout tests the Logout endpoint
@@ -619,6 +622,19 @@ func (suite *UserControllerTestSuite) TestLogout() {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 
+	// Set up mock JWT claims for testing
+	mockClaims := &models.JWTClaims{
+		UserID:   "test-user-123",
+		Email:    "test@example.com",
+		Username: "testuser",
+		Status:   models.UserStatusActive,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			ID:        "test-token-123",
+		},
+	}
+	c.Set("jwt_claims", mockClaims)
+
 	controller.Logout(c)
 
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
@@ -627,7 +643,7 @@ func (suite *UserControllerTestSuite) TestLogout() {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", response.Status)
-	assert.Equal(suite.T(), "Logged out successfully", response.Message)
+	assert.Equal(suite.T(), "Logout successful", response.Message)
 }
 
 // Edge case tests

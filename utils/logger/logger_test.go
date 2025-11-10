@@ -60,6 +60,7 @@ func (suite *LoggerTestSuite) createLoggerWithBuffer(level, format string) Logge
 			FullTimestamp:   true,
 			TimestampFormat: "2006-01-02 15:04:05",
 			ForceColors:     false, // Disable colors for testing
+			DisableQuote:    true,  // Disable quotes around fields
 		})
 	}
 
@@ -183,14 +184,14 @@ func (suite *LoggerTestSuite) TestDebugMethods() {
 	logger.Debug("test debug message")
 	output := suite.buffer.String()
 	assert.Contains(suite.T(), output, "test debug message")
-	assert.Contains(suite.T(), output, "DEBU")
+	assert.Contains(suite.T(), output, "level=debug")
 
 	// Test Debugf
 	suite.buffer.Reset()
 	logger.Debugf("debug message with %s and %d", "string", 42)
 	output = suite.buffer.String()
 	assert.Contains(suite.T(), output, "debug message with string and 42")
-	assert.Contains(suite.T(), output, "DEBU")
+	assert.Contains(suite.T(), output, "level=debug")
 }
 
 // TestInfoMethods tests Info and Infof methods
@@ -202,14 +203,14 @@ func (suite *LoggerTestSuite) TestInfoMethods() {
 	logger.Info("test info message")
 	output := suite.buffer.String()
 	assert.Contains(suite.T(), output, "test info message")
-	assert.Contains(suite.T(), output, "INFO")
+	assert.Contains(suite.T(), output, "level=info")
 
 	// Test Infof
 	suite.buffer.Reset()
 	logger.Infof("info message with %s and %d", "string", 42)
 	output = suite.buffer.String()
 	assert.Contains(suite.T(), output, "info message with string and 42")
-	assert.Contains(suite.T(), output, "INFO")
+	assert.Contains(suite.T(), output, "level=info")
 }
 
 // TestWarnMethods tests Warn and Warnf methods
@@ -221,14 +222,14 @@ func (suite *LoggerTestSuite) TestWarnMethods() {
 	logger.Warn("test warn message")
 	output := suite.buffer.String()
 	assert.Contains(suite.T(), output, "test warn message")
-	assert.Contains(suite.T(), output, "WARN")
+	assert.Contains(suite.T(), output, "level=warning")
 
 	// Test Warnf
 	suite.buffer.Reset()
 	logger.Warnf("warn message with %s and %d", "string", 42)
 	output = suite.buffer.String()
 	assert.Contains(suite.T(), output, "warn message with string and 42")
-	assert.Contains(suite.T(), output, "WARN")
+	assert.Contains(suite.T(), output, "level=warning")
 }
 
 // TestErrorMethods tests Error and Errorf methods
@@ -240,14 +241,14 @@ func (suite *LoggerTestSuite) TestErrorMethods() {
 	logger.Error("test error message")
 	output := suite.buffer.String()
 	assert.Contains(suite.T(), output, "test error message")
-	assert.Contains(suite.T(), output, "ERRO")
+	assert.Contains(suite.T(), output, "level=error")
 
 	// Test Errorf
 	suite.buffer.Reset()
 	logger.Errorf("error message with %s and %d", "string", 42)
 	output = suite.buffer.String()
 	assert.Contains(suite.T(), output, "error message with string and 42")
-	assert.Contains(suite.T(), output, "ERRO")
+	assert.Contains(suite.T(), output, "level=error")
 }
 
 // TestJSONFormat tests JSON format output
@@ -280,7 +281,7 @@ func (suite *LoggerTestSuite) TestTextFormat() {
 	output := suite.buffer.String()
 
 	assert.Contains(suite.T(), output, "test text message")
-	assert.Contains(suite.T(), output, "INFO")
+	assert.Contains(suite.T(), output, "level=info")
 	// Should contain timestamp
 	assert.Regexp(suite.T(), `\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}`, output)
 }
