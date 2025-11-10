@@ -342,6 +342,79 @@ func (j *JWTManager) initializeResourceMappings() {
 		"minimum_level":       8, // Require level 8+ for role deletion
 	})
 
+	// Job management resource mappings
+	j.resourceMapping.Store("job_list", map[string]interface{}{
+		"required_permission": "read",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       2, // Require level 2+ for job list access
+	})
+
+	j.resourceMapping.Store("job_details", map[string]interface{}{
+		"required_permission": "read",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       2, // Require level 2+ for job details
+	})
+
+	j.resourceMapping.Store("job_create", map[string]interface{}{
+		"required_permission": "create",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       4, // Require level 4+ for job creation
+	})
+
+	j.resourceMapping.Store("job_update", map[string]interface{}{
+		"required_permission": "update",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       3, // Require level 3+ for job updates
+	})
+
+	j.resourceMapping.Store("job_delete", map[string]interface{}{
+		"required_permission": "delete",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       7, // Require level 7+ for job deletion
+	})
+
+	j.resourceMapping.Store("job_start", map[string]interface{}{
+		"required_permission": "update",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       3, // Require level 3+ for starting jobs
+	})
+
+	j.resourceMapping.Store("job_complete", map[string]interface{}{
+		"required_permission": "update",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       3, // Require level 3+ for completing jobs
+	})
+
+	j.resourceMapping.Store("job_cancel", map[string]interface{}{
+		"required_permission": "manage",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       6, // Require level 6+ for cancelling jobs
+	})
+
+	j.resourceMapping.Store("job_assign", map[string]interface{}{
+		"required_permission": "update",
+		"resource_type":       "job_management",
+		"context_required":    true,
+		"department_scope":    true,
+		"minimum_level":       5, // Require level 5+ for job assignment
+	})
+
 	j.Logger.Debug("Resource-specific permission mappings initialized")
 }
 

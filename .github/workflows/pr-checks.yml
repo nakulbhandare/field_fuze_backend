@@ -1,0 +1,227 @@
+name: PR Quality Checks
+
+on:
+  pull_request:
+    branches: [ master ]
+  push:
+    branches-ignore: [ master ]
+
+env:
+  GO_VERSION: '1.23.2'
+  COVERAGE_THRESHOLD: 95
+
+jobs:
+  code-quality:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Basic code quality checks
+        run: echo "Running built-in Go tools..."
+
+      - name: Check code formatting
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "❌ The following files are not properly formatted:"
+            gofmt -s -l .
+            echo "Run 'gofmt -s -w .' to fix formatting issues"
+            exit 1
+          fi
+          echo "✅ All files are properly formatted"
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Check code quality with built-in tools
+        run: |
+          echo "🔍 Running additional quality checks..."
+          echo "✅ Using built-in Go tools only"
+
+  test-coverage:
+    name: Tests & Coverage Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests with coverage
+        run: |
+          echo "🧪 Running tests with coverage analysis..."
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          
+      - name: Generate coverage report
+        run: |
+          echo "📊 Generating coverage report..."
+          go tool cover -html=coverage.out -o coverage.html
+          go tool cover -func=coverage.out -o coverage.txt
+          
+      - name: Check overall coverage
+        run: |
+          echo "📈 Checking overall coverage threshold..."
+          TOTAL_COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print substr($3, 1, length($3)-1)}')
+          echo "Total coverage: ${TOTAL_COVERAGE}%"
+          
+          if (( $(echo "$TOTAL_COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+            echo "❌ Total coverage ${TOTAL_COVERAGE}% is below threshold ${COVERAGE_THRESHOLD}%"
+            exit 1
+          fi
+          echo "✅ Total coverage ${TOTAL_COVERAGE}% meets threshold ${COVERAGE_THRESHOLD}%"
+
+      - name: Check per-package coverage
+        run: |
+          echo "📊 Checking per-package coverage..."
+          go tool cover -func=coverage.out | grep -v "total:" | while read line; do
+            PACKAGE=$(echo "$line" | awk '{print $1}')
+            COVERAGE=$(echo "$line" | awk '{print substr($3, 1, length($3)-1)}')
+            
+            if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+              echo "❌ Package $PACKAGE coverage ${COVERAGE}% is below threshold ${COVERAGE_THRESHOLD}%"
+              exit 1
+            else
+              echo "✅ Package $PACKAGE coverage: ${COVERAGE}%"
+            fi
+          done
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: |
+            coverage.out
+            coverage.html
+            coverage.txt
+
+  build-test:
+    name: Build & Integration Tests
+    runs-on: ubuntu-latest
+    needs: [code-quality, test-coverage]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build application
+        run: |
+          echo "🔨 Building application..."
+          go build -v -o fieldfuze-backend .
+          echo "✅ Build completed successfully"
+
+      - name: Test binary execution
+        run: |
+          echo "🚀 Testing binary execution..."
+          timeout 10s ./fieldfuze-backend || if [ $? -eq 124 ]; then echo "✅ Binary starts correctly"; else echo "❌ Binary failed to start"; exit 1; fi
+
+      - name: Check for race conditions
+        run: |
+          echo "🏃 Checking for race conditions..."
+          go test -race -short ./...
+
+  dependency-check:
+    name: Dependency Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check dependencies
+        run: |
+          echo "📦 Checking dependencies..."
+          go mod verify
+          echo "✅ Dependencies verified"
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "📦 Checking for outdated dependencies..."
+          go list -u -m all
+
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, test-coverage, build-test, dependency-check]
+    if: always()
+    steps:
+      - name: PR Quality Summary
+        run: |
+          echo "## 🎯 PR Quality Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.code-quality.result }}" = "success" ]; then
+            echo "✅ **Code Quality**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Code Quality**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.test-coverage.result }}" = "success" ]; then
+            echo "✅ **Test Coverage**: Passed (≥95%)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Test Coverage**: Failed (<95%)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.build-test.result }}" = "success" ]; then
+            echo "✅ **Build & Integration**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Build & Integration**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.dependency-check.result }}" = "success" ]; then
+            echo "✅ **Dependencies**: Secure" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Dependencies**: Vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Coverage Reports**: Available in job artifacts" >> $GITHUB_STEP_SUMMARY

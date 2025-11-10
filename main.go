@@ -18,6 +18,7 @@ import (
 var config *models.Config
 
 func Init() {
+	fmt.Println("Inside Init :: ")
 	var err error
 	config, err = utils.GetConfig()
 	if err != nil {
@@ -55,7 +56,7 @@ func Init() {
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host localhost:8081
+// @host
 // @BasePath /api/v1/auth
 
 // @securityDefinitions.apikey BearerAuth

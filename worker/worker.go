@@ -71,7 +71,7 @@ func NewWorker(ctx context.Context, cfg *models.Config, log logger.Logger) (*mod
 	lockManager := NewLockManager(workerConfig.LockFilePath, workerConfig.LockTimeout, workerConfig.Environment)
 	// Create enhanced status manager with AWS integration for real-time status tracking
 	statusManager := NewStatusManager(workerConfig.StatusFilePath, infrastructureSetup.InfrastructureSetup.DBClient, log)
-	
+
 	log.Info("Enhanced infrastructure worker initialized with lightweight AWS status tracking")
 
 	// Create cron job with second precision

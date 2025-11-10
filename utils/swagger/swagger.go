@@ -132,6 +132,14 @@ const swaggerHTML = `<!DOCTYPE html>
                 defaultModelExpandDepth: 1,
                 validatorUrl: null,
                 supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+                requestInterceptor: (request) => {
+                    // Use the current host instead of localhost
+                    const currentHost = window.location.origin;
+                    if (request.url.includes('localhost:8081')) {
+                        request.url = request.url.replace(/https?:\/\/localhost:8081/, currentHost);
+                    }
+                    return request;
+                },
                 onComplete: function() {
                     console.log("Swagger UI loaded successfully");
                     // Start monitoring for auth dialogs after UI is loaded

@@ -52,18 +52,18 @@ func (s *InfrastructureService) getWorkerStatus() (*models.ExecutionResult, erro
 // GetWorkerStatus returns the current worker status with enhanced context (public method for API)
 func (s *InfrastructureService) GetWorkerStatus(ctx context.Context) (*models.ExecutionResult, error) {
 	s.logger.Debug("Getting detailed worker status")
-	
+
 	result, err := s.getWorkerStatus()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Enrich status with additional context
 	s.enrichStatusWithContext(result)
-	
+
 	// Update health indicators
 	s.updateHealthIndicators(result)
-	
+
 	return result, nil
 }
 
@@ -125,37 +125,37 @@ func (s *InfrastructureService) enrichStatusWithContext(result *models.Execution
 		result.NextAction = "Creating DynamoDB tables - this may take a few minutes"
 		result.EstimatedTime = s.durationPtr(5 * time.Minute)
 		result.Phase = "Table Creation"
-		
+
 	case models.StatusWaitingForTables:
 		result.NextAction = "Waiting for DynamoDB tables to become active"
 		result.EstimatedTime = s.durationPtr(3 * time.Minute)
 		result.Phase = "Table Activation"
-		
+
 	case models.StatusCreatingIndexes:
 		result.NextAction = "Creating database indexes"
 		result.EstimatedTime = s.durationPtr(2 * time.Minute)
 		result.Phase = "Index Creation"
-		
+
 	case models.StatusWaitingForIndexes:
 		result.NextAction = "Waiting for database indexes to become ready"
 		result.EstimatedTime = s.durationPtr(1 * time.Minute)
 		result.Phase = "Index Activation"
-		
+
 	case models.StatusValidating:
 		result.NextAction = "Validating infrastructure configuration"
 		result.EstimatedTime = s.durationPtr(30 * time.Second)
 		result.Phase = "Validation"
-		
+
 	case models.StatusFixingIssues:
 		result.NextAction = "Fixing detected infrastructure issues"
 		result.EstimatedTime = s.durationPtr(2 * time.Minute)
 		result.Phase = "Issue Resolution"
-		
+
 	case models.StatusRevalidating:
 		result.NextAction = "Re-validating infrastructure after fixes"
 		result.EstimatedTime = s.durationPtr(1 * time.Minute)
 		result.Phase = "Re-validation"
-		
+
 	case models.StatusFailed:
 		// Extract retry count from metadata
 		retryCount := s.getRetryCountFromMetadata(result)
@@ -166,29 +166,29 @@ func (s *InfrastructureService) enrichStatusWithContext(result *models.Execution
 			result.NextAction = "Manual intervention required - max retries exceeded"
 		}
 		result.Phase = "Error Recovery"
-		
+
 	case models.StatusRetrying:
 		retryCount := s.getRetryCountFromMetadata(result)
 		result.NextAction = fmt.Sprintf("Retrying infrastructure setup (attempt %d)", retryCount+1)
 		result.Phase = "Retry"
-		
+
 	case models.StatusCompleted:
 		result.NextAction = "Infrastructure is ready for use"
 		result.Phase = "Completed"
-		
+
 	case models.StatusInitializing:
 		result.NextAction = "Initializing infrastructure worker"
 		result.Phase = "Initialization"
-		
+
 	case models.StatusRunning:
 		result.NextAction = "Infrastructure setup is in progress"
 		result.Phase = "Setup"
-		
+
 	default:
 		result.NextAction = "Monitoring infrastructure status"
 		result.Phase = "Monitoring"
 	}
-	
+
 	// Calculate progress if applicable
 	if result.Progress == nil {
 		result.Progress = s.calculateProgress(result)
@@ -204,18 +204,18 @@ func (s *InfrastructureService) updateHealthIndicators(result *models.ExecutionR
 		} else {
 			result.HealthStatus = "degraded"
 		}
-		
+
 	case models.StatusCreatingTables, models.StatusWaitingForTables,
-		 models.StatusCreatingIndexes, models.StatusWaitingForIndexes,
-		 models.StatusValidating, models.StatusInitializing:
+		models.StatusCreatingIndexes, models.StatusWaitingForIndexes,
+		models.StatusValidating, models.StatusInitializing:
 		result.HealthStatus = "provisioning"
-		
+
 	case models.StatusFailed:
 		result.HealthStatus = "unhealthy"
-		
+
 	case models.StatusRetrying, models.StatusFixingIssues, models.StatusRevalidating:
 		result.HealthStatus = "degraded"
-		
+
 	case models.StatusRunning:
 		// Check how long it's been running
 		runningTime := time.Since(result.StartTime)
@@ -224,7 +224,7 @@ func (s *InfrastructureService) updateHealthIndicators(result *models.ExecutionR
 		} else {
 			result.HealthStatus = "provisioning"
 		}
-		
+
 	default:
 		result.HealthStatus = "unknown"
 	}
@@ -235,7 +235,7 @@ func (s *InfrastructureService) calculateProgress(result *models.ExecutionResult
 	totalSteps := 6 // Initialization, Create Tables, Wait Tables, Create Indexes, Validate, Complete
 	currentStep := 0
 	stepName := "Unknown"
-	
+
 	switch result.Status {
 	case models.StatusInitializing:
 		currentStep = 1
@@ -268,12 +268,12 @@ func (s *InfrastructureService) calculateProgress(result *models.ExecutionResult
 		currentStep = 1
 		stepName = string(result.Status)
 	}
-	
+
 	percentage := (currentStep * 100) / totalSteps
 	if percentage > 100 {
 		percentage = 100
 	}
-	
+
 	return &models.ProgressInfo{
 		CurrentStep: currentStep,
 		TotalSteps:  totalSteps,
@@ -336,7 +336,7 @@ func (s *InfrastructureService) startWorkerProcess(ctx context.Context) error {
 		Metadata: map[string]interface{}{
 			"retry_count": 0,
 		},
-		Success:        false,
+		Success: false,
 	}
 
 	data, err := json.MarshalIndent(initialStatus, "", "  ")

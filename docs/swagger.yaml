@@ -50,6 +50,74 @@ definitions:
         description: '"success" or "error"'
         type: string
     type: object
+  models.CreateJobRequest:
+    properties:
+      clientID:
+        type: string
+      jobType:
+        allOf:
+        - $ref: '#/definitions/models.JobType'
+        enum:
+        - service
+        - maintenance
+        - installation
+        - repair
+        - inspection
+      jobsName:
+        maxLength: 200
+        minLength: 2
+        type: string
+      notes:
+        maxLength: 1000
+        type: string
+      orgID:
+        type: string
+      qbInfoOnJob:
+        $ref: '#/definitions/models.QBInfoOnJob'
+      usersAssignedToJob:
+        items:
+          type: string
+        type: array
+      vehiclesAssignedToJob:
+        items:
+          type: string
+        type: array
+    required:
+    - clientID
+    - jobType
+    - jobsName
+    - orgID
+    type: object
+  models.JobStatus:
+    enum:
+    - pending
+    - active
+    - in_progress
+    - completed
+    - cancelled
+    - on_hold
+    type: string
+    x-enum-varnames:
+    - JobStatusPending
+    - JobStatusActive
+    - JobStatusInProgress
+    - JobStatusCompleted
+    - JobStatusCancelled
+    - JobStatusOnHold
+  models.JobType:
+    enum:
+    - service
+    - maintenance
+    - installation
+    - repair
+    - inspection
+    type: string
+    x-enum-varnames:
+    - JobTypeService
+    - JobTypeMaintenance
+    - JobTypeInstallation
+    - JobTypeRepair
+    - JobTypeInspection
   models.Organization:
     properties:
       address:
@@ -66,6 +134,7 @@ definitions:
       created_at:
         type: string
       created_by:
+        description: Audit fields
         type: string
       description:
         maxLength: 500
@@ -106,7 +175,6 @@ definitions:
         description: Contact information
         type: string
     required:
-    - created_by
     - name
     - status
     type: object
@@ -120,6 +188,21 @@ definitions:
     - OrganizationStatusActive
     - OrganizationStatusInactive
     - OrganizationStatusSuspended
+  models.QBInfoOnJob:
+    properties:
+      customerID:
+        type: string
+      invoiceID:
+        type: string
+      lineItemID:
+        type: string
+      paymentID:
+        type: string
+      scheduledAt:
+        type: string
+      serviceNotes:
+        type: string
+    type: object
   models.RegisterUser:
     description: User registration request with account details
     properties:
@@ -181,6 +264,49 @@ definitions:
     - level
     - permissions
     - role_name
+    type: object
+  models.UpdateJobRequest:
+    properties:
+      jobImagesAfterService:
+        items:
+          type: string
+        type: array
+      jobStatus:
+        allOf:
+        - $ref: '#/definitions/models.JobStatus'
+        enum:
+        - pending
+        - active
+        - in_progress
+        - completed
+        - cancelled
+        - on_hold
+      jobType:
+        allOf:
+        - $ref: '#/definitions/models.JobType'
+        enum:
+        - service
+        - maintenance
+        - installation
+        - repair
+        - inspection
+      jobsName:
+        maxLength: 200
+        minLength: 2
+        type: string
+      notes:
+        maxLength: 1000
+        type: string
+      qbInfoOnJob:
+        $ref: '#/definitions/models.QBInfoOnJob'
+      usersAssignedToJob:
+        items:
+          type: string
+        type: array
+      vehiclesAssignedToJob:
+        items:
+          type: string
+        type: array
     type: object
   models.User:
     properties:
@@ -252,7 +378,6 @@ definitions:
         description: Force restart even if worker is currently running
         type: boolean
     type: object
-host: localhost:8081
 info:
   contact:
     email: support@swagger.io
@@ -409,6 +534,309 @@ paths:
       summary: Get worker execution status
       tags:
       - Infrastructure
+  /jobs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of jobs with optional filtering
+      parameters:
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of jobs per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by organization ID
+        in: query
+        name: orgID
+        type: string
+      - description: Filter by client ID
+        in: query
+        name: clientID
+        type: string
+      - description: Filter by job status
+        in: query
+        name: jobStatus
+        type: string
+      - description: Filter by job type
+        in: query
+        name: jobType
+        type: string
+      - description: Filter by creator
+        in: query
+        name: createdBy
+        type: string
+      - description: Filter from date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        type: string
+      - description: Filter to date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Jobs retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve jobs
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get jobs with optional filtering
+      tags:
+      - Job Management
+    post:
+      consumes:
+      - application/json
+      description: Create a new job with specified details
+      parameters:
+      - description: Create job request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Job created successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request - Invalid job data
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error - Job creation failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new job
+      tags:
+      - Job Management
+  /jobs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a job by ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job deleted successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete job
+      tags:
+      - Job Management
+    get:
+      consumes:
+      - application/json
+      description: Get a specific job by its ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job retrieved successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get job by ID
+      tags:
+      - Job Management
+    put:
+      consumes:
+      - application/json
+      description: Update an existing job
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update job request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job updated successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update job
+      tags:
+      - Job Management
+  /jobs/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancel a job by changing its status to cancelled
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cancel reason
+        in: body
+        name: request
+        schema:
+          properties:
+            reason:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job cancelled successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Cancel a job
+      tags:
+      - Job Management
+  /jobs/{id}/complete:
+    post:
+      consumes:
+      - application/json
+      description: Complete a job by changing its status to completed
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job completed successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Complete a job
+      tags:
+      - Job Management
+  /jobs/{id}/start:
+    post:
+      consumes:
+      - application/json
+      description: Start a job by changing its status to in_progress
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job started successfully
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Start a job
+      tags:
+      - Job Management
   /organization:
     post:
       consumes:

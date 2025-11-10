@@ -14,6 +14,7 @@ type Service struct {
 	roleService           RoleServiceInterface
 	infrastructureService InfrastructureServiceInterface
 	organizationService   OrganizationServiceInterface
+	jobService            JobServiceInterface
 }
 
 // NewService creates a new service container with all dependencies injected
@@ -29,6 +30,7 @@ func NewService(
 		roleService:           NewRoleService(repoContainer.GetRoleRepository(), logger),
 		infrastructureService: NewInfrastructureService(ctx, dalContainer.GetDatabaseClient(), logger, config),
 		organizationService:   NewOrganizationService(repoContainer.GetOrganizationRepository(), logger),
+		jobService:            NewJobService(repoContainer.GetJobRepository(), logger),
 	}
 }
 
@@ -50,4 +52,9 @@ func (s *Service) GetInfrastructureService() InfrastructureServiceInterface {
 // GetOrganizationService returns the organization service interface
 func (s *Service) GetOrganizationService() OrganizationServiceInterface {
 	return s.organizationService
+}
+
+// GetJobService returns the job service interface
+func (s *Service) GetJobService() JobServiceInterface {
+	return s.jobService
 }

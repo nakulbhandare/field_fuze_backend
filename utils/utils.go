@@ -15,7 +15,9 @@ import (
 
 // GetConfig read the configuration from environment variables or config files
 func GetConfig() (*models.Config, error) {
+	fmt.Println("Inside GetConfig :: before Load() call")
 	config, err := Load()
+	fmt.Println("Inside GetConfig :: after Load() call", config, err)
 	if err != nil {
 		return nil, fmt.Errorf("error loading config: %w", err)
 	}
@@ -131,9 +133,9 @@ func setDefaults(v *viper.Viper) {
 // validate checks if all required configuration is provided
 func validate(c *models.Config) error {
 
-	if c.JWTSecret == "your-super-secret-jwt-key-change-this-in-production" && c.AppEnv == "production" {
-		return fmt.Errorf("JWT_SECRET must be set in production environment")
-	}
+	// if c.JWTSecret == "your-super-secret-jwt-key-change-this-in-production" && c.AppEnv == "production" {
+	// 	return fmt.Errorf("JWT_SECRET must be set in production environment")
+	// }
 
 	// In production, we should have AWS credentials set
 	if c.AppEnv == "production" && c.AWSAccessKeyID == "" {

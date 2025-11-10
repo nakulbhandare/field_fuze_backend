@@ -48,7 +48,8 @@ This documentation is organized into comprehensive sections covering each layer 
 ### 📚 API & Development
 - **[API Documentation](docs/API.md)** - Complete API reference and examples
 - **[Development Guide](docs/DEVELOPMENT.md)** - Setup, testing, and contribution guidelines
-- **[Deployment](docs/DEPLOYMENT.md)** - Production deployment and configuration
+- **[EC2 Deployment](DEPLOYMENT.md)** - Traditional EC2 deployment guide
+- **[ECS Deployment](DEPLOYMENT-ECS.md)** - Containerized ECS deployment guide
 
 ## ✨ Key Features
 
@@ -172,4 +173,4 @@ For support and questions:
 
 ---
 
-**Quick Links**: [Controllers](docs/CONTROLLERS.md) | [Services](docs/SERVICES.md) | [Models](docs/MODELS.md) | [API Docs](docs/API.md) | [Development](docs/DEVELOPMENT.md)
+**Quick Links**: [Controllers](docs/CONTROLLERS.md) | [Services](docs/SERVICES.md) | [Models](docs/MODELS.md) | [API Docs](docs/API.md) | [Development](docs/DEVELOPMENT.md) | [EC2 Deploy](DEPLOYMENT.md) | [ECS Deploy](DEPLOYMENT-ECS.md)

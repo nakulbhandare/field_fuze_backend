@@ -57,7 +57,7 @@ func (h *InfrastructureController) GetWorkerStatus(c *gin.Context) {
 	// Map worker execution status to appropriate HTTP status
 	httpStatus, apiStatus := h.mapWorkerStatusToHTTP(workerStatus)
 	message := h.getStatusMessage(workerStatus)
-	
+
 	c.JSON(httpStatus, models.APIResponse{
 		Status:  apiStatus,
 		Code:    httpStatus,
@@ -226,28 +226,28 @@ func (h *InfrastructureController) mapWorkerStatusToHTTP(ws *models.ExecutionRes
 			return http.StatusOK, "success"
 		}
 		return http.StatusOK, "warning" // Completed but with issues
-		
+
 	case models.StatusFailed:
 		return http.StatusServiceUnavailable, "error" // Infrastructure not ready
-		
+
 	case models.StatusCreatingTables, models.StatusWaitingForTables,
-		 models.StatusCreatingIndexes, models.StatusWaitingForIndexes,
-		 models.StatusValidating, models.StatusFixingIssues, models.StatusRevalidating,
-		 models.StatusInitializing, models.StatusRunning:
+		models.StatusCreatingIndexes, models.StatusWaitingForIndexes,
+		models.StatusValidating, models.StatusFixingIssues, models.StatusRevalidating,
+		models.StatusInitializing, models.StatusRunning:
 		return http.StatusAccepted, "in_progress" // 202 - Accepted, processing
-		
+
 	case models.StatusRetrying:
 		return http.StatusAccepted, "retrying"
-		
+
 	case models.StatusDeleting, models.StatusDeletionScheduled:
 		return http.StatusAccepted, "deleting"
-		
+
 	case models.StatusDeleted:
 		return http.StatusOK, "deleted"
-		
+
 	case models.StatusDeletionFailed:
 		return http.StatusServiceUnavailable, "deletion_failed"
-		
+
 	default:
 		return http.StatusOK, "info"
 	}
@@ -261,31 +261,31 @@ func (h *InfrastructureController) getStatusMessage(ws *models.ExecutionResult) 
 			return "Infrastructure is ready and healthy"
 		}
 		return "Infrastructure setup completed with warnings"
-		
+
 	case models.StatusFailed:
 		return "Infrastructure setup failed - manual intervention may be required"
-		
+
 	case models.StatusCreatingTables:
 		return "Creating DynamoDB tables"
-		
+
 	case models.StatusWaitingForTables:
 		return "Waiting for DynamoDB tables to become active"
-		
+
 	case models.StatusCreatingIndexes:
 		return "Creating database indexes"
-		
+
 	case models.StatusWaitingForIndexes:
 		return "Waiting for database indexes to become ready"
-		
+
 	case models.StatusValidating:
 		return "Validating infrastructure configuration"
-		
+
 	case models.StatusFixingIssues:
 		return "Fixing detected infrastructure issues"
-		
+
 	case models.StatusRevalidating:
 		return "Re-validating infrastructure after fixes"
-		
+
 	case models.StatusRetrying:
 		// Extract retry count from metadata
 		retryCount := 0
@@ -295,25 +295,25 @@ func (h *InfrastructureController) getStatusMessage(ws *models.ExecutionResult) 
 			}
 		}
 		return fmt.Sprintf("Retrying infrastructure setup (attempt %d)", retryCount+1)
-		
+
 	case models.StatusInitializing:
 		return "Initializing infrastructure worker"
-		
+
 	case models.StatusRunning:
 		return "Infrastructure setup is running"
-		
+
 	case models.StatusDeleting:
 		return "Deleting infrastructure resources"
-		
+
 	case models.StatusDeletionScheduled:
 		return "Infrastructure deletion has been scheduled"
-		
+
 	case models.StatusDeleted:
 		return "Infrastructure has been successfully deleted"
-		
+
 	case models.StatusDeletionFailed:
 		return "Infrastructure deletion failed"
-		
+
 	default:
 		return "Worker status retrieved successfully"
 	}

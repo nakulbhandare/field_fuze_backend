@@ -11,16 +11,18 @@ type Repository struct {
 	userRepository         UserRepositoryInterface
 	roleRepository         RoleRepositoryInterface
 	organizationRepository OrganizationRepositoryInterface
+	jobRepository          JobRepositoryInterface
 }
 
 // NewRepository creates a new repository container with all dependencies injected
 func NewRepository(dalContainer dal.DALContainerInterface, cfg *models.Config, log logger.Logger) RepositoryContainerInterface {
 	dbClient := dalContainer.GetDatabaseClient()
-	
+
 	return &Repository{
 		userRepository:         NewUserRepository(dbClient, cfg, log),
 		roleRepository:         NewRoleRepository(dbClient, cfg, log),
 		organizationRepository: NewOrganizationRepository(dbClient, cfg, log),
+		jobRepository:          NewJobRepository(dbClient, cfg, log),
 	}
 }
 
@@ -39,3 +41,7 @@ func (r *Repository) GetOrganizationRepository() OrganizationRepositoryInterface
 	return r.organizationRepository
 }
 
+// GetJobRepository returns the job repository interface
+func (r *Repository) GetJobRepository() JobRepositoryInterface {
+	return r.jobRepository
+}

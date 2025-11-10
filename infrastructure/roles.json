@@ -198,6 +198,84 @@
         "resource_scope": "user_management",
         "allowed_resources": "user_list"
       }
+    },
+    {
+      "role_id": "field-worker",
+      "role_name": "FieldWorker",
+      "level": 3,
+      "permissions": ["read", "view", "update"],
+      "context": {
+        "department": "FIELD",
+        "resource_scope": "job_management",
+        "allowed_resources": "job_list,job_details,job_start,job_complete"
+      }
+    },
+    {
+      "role_id": "job-viewer",
+      "role_name": "JobViewer",
+      "level": 2,
+      "permissions": ["read", "view"],
+      "context": {
+        "department": "OPERATIONS",
+        "resource_scope": "job_management",
+        "allowed_resources": "job_list,job_details"
+      }
+    },
+    {
+      "role_id": "job-dispatcher",
+      "role_name": "JobDispatcher",
+      "level": 5,
+      "permissions": ["read", "view", "create", "update"],
+      "context": {
+        "department": "OPERATIONS",
+        "resource_scope": "job_management",
+        "allowed_resources": "job_list,job_details,job_create,job_update,job_assign"
+      }
+    },
+    {
+      "role_id": "job-manager",
+      "role_name": "JobManager",
+      "level": 6,
+      "permissions": ["read", "view", "create", "update", "manage"],
+      "context": {
+        "department": "OPERATIONS",
+        "resource_scope": "job_management",
+        "allowed_resources": "job_list,job_details,job_create,job_update,job_assign,job_cancel"
+      }
+    },
+    {
+      "role_id": "job-supervisor",
+      "role_name": "JobSupervisor",
+      "level": 7,
+      "permissions": ["read", "view", "create", "update", "delete", "manage"],
+      "context": {
+        "department": "OPERATIONS",
+        "resource_scope": "job_management",
+        "allowed_resources": "*"
+      }
+    },
+    {
+      "role_id": "client-manager",
+      "role_name": "ClientManager",
+      "level": 4,
+      "permissions": ["read", "view", "create"],
+      "context": {
+        "department": "SALES",
+        "resource_scope": "job_management",
+        "allowed_resources": "job_list,job_details,job_create"
+      }
+    },
+    {
+      "role_id": "organization-admin",
+      "role_name": "OrganizationAdmin",
+      "level": 8,
+      "permissions": ["read", "view", "create", "update", "delete", "manage"],
+      "context": {
+        "department": "*",
+        "resource_scope": "job_management,user_management,role_management",
+        "allowed_resources": "*",
+        "organization_scoped": "true"
+      }
     }
   ]
 }

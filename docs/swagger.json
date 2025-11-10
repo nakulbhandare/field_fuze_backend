@@ -15,7 +15,6 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:8081",
     "basePath": "/api/v1/auth",
     "paths": {
         "/infrastructure/worker/auto-restart": {
@@ -217,6 +216,481 @@
                     },
                     "500": {
                         "description": "Internal Server Error - Failed to retrieve worker status",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of jobs with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Get jobs with optional filtering",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number for pagination",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of jobs per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by organization ID",
+                        "name": "orgID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by client ID",
+                        "name": "clientID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by job status",
+                        "name": "jobStatus",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by job type",
+                        "name": "jobType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by creator",
+                        "name": "createdBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter from date (YYYY-MM-DD)",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter to date (YYYY-MM-DD)",
+                        "name": "toDate",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Jobs retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve jobs",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new job with specified details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Create a new job",
+                "parameters": [
+                    {
+                        "description": "Create job request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Job created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid job data",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Job creation failed",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a specific job by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Get job by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing job",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Update job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update job request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a job by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Delete job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cancel a job by changing its status to cancelled",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Cancel a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Cancel reason",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job cancelled successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/{id}/complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Complete a job by changing its status to completed",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Complete a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job completed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/{id}/start": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Start a job by changing its status to in_progress",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job Management"
+                ],
+                "summary": "Start a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job started successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/models.APIResponse"
                         }
@@ -1245,10 +1719,100 @@
                 }
             }
         },
+        "models.CreateJobRequest": {
+            "type": "object",
+            "required": [
+                "clientID",
+                "jobType",
+                "jobsName",
+                "orgID"
+            ],
+            "properties": {
+                "clientID": {
+                    "type": "string"
+                },
+                "jobType": {
+                    "enum": [
+                        "service",
+                        "maintenance",
+                        "installation",
+                        "repair",
+                        "inspection"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.JobType"
+                        }
+                    ]
+                },
+                "jobsName": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 2
+                },
+                "notes": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "orgID": {
+                    "type": "string"
+                },
+                "qbInfoOnJob": {
+                    "$ref": "#/definitions/models.QBInfoOnJob"
+                },
+                "usersAssignedToJob": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "vehiclesAssignedToJob": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.JobStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "active",
+                "in_progress",
+                "completed",
+                "cancelled",
+                "on_hold"
+            ],
+            "x-enum-varnames": [
+                "JobStatusPending",
+                "JobStatusActive",
+                "JobStatusInProgress",
+                "JobStatusCompleted",
+                "JobStatusCancelled",
+                "JobStatusOnHold"
+            ]
+        },
+        "models.JobType": {
+            "type": "string",
+            "enum": [
+                "service",
+                "maintenance",
+                "installation",
+                "repair",
+                "inspection"
+            ],
+            "x-enum-varnames": [
+                "JobTypeService",
+                "JobTypeMaintenance",
+                "JobTypeInstallation",
+                "JobTypeRepair",
+                "JobTypeInspection"
+            ]
+        },
         "models.Organization": {
             "type": "object",
             "required": [
-                "created_by",
                 "name",
                 "status"
             ],
@@ -1271,6 +1835,7 @@
                     "type": "string"
                 },
                 "created_by": {
+                    "description": "Audit fields",
                     "type": "string"
                 },
                 "description": {
@@ -1340,6 +1905,29 @@
                 "OrganizationStatusInactive",
                 "OrganizationStatusSuspended"
             ]
+        },
+        "models.QBInfoOnJob": {
+            "type": "object",
+            "properties": {
+                "customerID": {
+                    "type": "string"
+                },
+                "invoiceID": {
+                    "type": "string"
+                },
+                "lineItemID": {
+                    "type": "string"
+                },
+                "paymentID": {
+                    "type": "string"
+                },
+                "scheduledAt": {
+                    "type": "string"
+                },
+                "serviceNotes": {
+                    "type": "string"
+                }
+            }
         },
         "models.RegisterUser": {
             "description": "User registration request with account details",
@@ -1422,6 +2010,70 @@
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 2
+                }
+            }
+        },
+        "models.UpdateJobRequest": {
+            "type": "object",
+            "properties": {
+                "jobImagesAfterService": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "jobStatus": {
+                    "enum": [
+                        "pending",
+                        "active",
+                        "in_progress",
+                        "completed",
+                        "cancelled",
+                        "on_hold"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.JobStatus"
+                        }
+                    ]
+                },
+                "jobType": {
+                    "enum": [
+                        "service",
+                        "maintenance",
+                        "installation",
+                        "repair",
+                        "inspection"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.JobType"
+                        }
+                    ]
+                },
+                "jobsName": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 2
+                },
+                "notes": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "qbInfoOnJob": {
+                    "$ref": "#/definitions/models.QBInfoOnJob"
+                },
+                "usersAssignedToJob": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "vehiclesAssignedToJob": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
