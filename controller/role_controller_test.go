@@ -102,7 +102,7 @@ func (suite *RoleControllerTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.mockService = &MockRoleService{}
 	suite.mockLogger = &MockControllerLogger{}
-	
+
 	// Set up comprehensive mock expectations for all logger patterns
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
@@ -113,7 +113,7 @@ func (suite *RoleControllerTestSuite) SetupTest() {
 	suite.mockLogger.On("Infof", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Warnf", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Errorf", mock.Anything, mock.Anything).Maybe()
-	
+
 	suite.roleController = NewRoleController(suite.ctx, suite.mockService, suite.mockLogger)
 	suite.router = gin.New()
 }
@@ -125,7 +125,7 @@ func TestRoleControllerTestSuite(t *testing.T) {
 // TestNewRoleController tests the constructor
 func (suite *RoleControllerTestSuite) TestNewRoleController() {
 	controller := NewRoleController(suite.ctx, suite.mockService, suite.mockLogger)
-	
+
 	assert.NotNil(suite.T(), controller)
 	assert.Equal(suite.T(), suite.ctx, controller.ctx)
 	assert.Equal(suite.T(), suite.mockService, controller.roleService)
@@ -148,17 +148,17 @@ func (suite *RoleControllerTestSuite) TestGetRoles() {
 			Permissions: []string{"read"},
 		},
 	}
-	
+
 	suite.mockService.On("GetRoleAssignments").Return(expectedRoles, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/roles", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/roles", suite.roleController.GetRoles)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -171,22 +171,22 @@ func (suite *RoleControllerTestSuite) TestGetRolesWithFilters() {
 	expectedRoles := []*models.RoleAssignment{
 		{
 			RoleID:      "role-1",
-			RoleName:    "Admin", 
+			RoleName:    "Admin",
 			Level:       10,
 			Permissions: []string{"admin"},
 		},
 	}
-	
+
 	suite.mockService.On("GetRoleAssignmentsByStatus", "active").Return(expectedRoles, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/roles?status=active", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/roles", suite.roleController.GetRoles)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -196,15 +196,15 @@ func (suite *RoleControllerTestSuite) TestGetRolesWithFilters() {
 // TestGetRolesServiceError tests GetRoles when service returns error
 func (suite *RoleControllerTestSuite) TestGetRolesServiceError() {
 	suite.mockService.On("GetRoleAssignments").Return(nil, errors.New("service error"))
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/roles", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/roles", suite.roleController.GetRoles)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -218,36 +218,36 @@ func (suite *RoleControllerTestSuite) TestCreateRole() {
 		Level:       5,
 		Permissions: []string{"read", "write"},
 	}
-	
+
 	expectedRole := &models.RoleAssignment{
 		RoleID:      "role-123",
 		RoleName:    "Test Role",
 		Level:       5,
 		Permissions: []string{"read", "write"},
 	}
-	
+
 	suite.mockService.On("CreateRole", suite.ctx, mock.MatchedBy(func(role *models.RoleAssignment) bool {
 		return role.RoleName == "Test Role" && role.Level == 5
 	}), "admin").Return(expectedRole, nil)
-	
+
 	body, _ := json.Marshal(roleReq)
 	req, _ := http.NewRequest(http.MethodPost, "/role", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Set user context for createdBy field
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, "user", &models.JWTClaims{UserID: "admin"})
 	req = req.WithContext(ctx)
-	
+
 	w := httptest.NewRecorder()
 	suite.router.POST("/role", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.CreateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusCreated, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -261,20 +261,20 @@ func (suite *RoleControllerTestSuite) TestCreateRoleInvalidRequest() {
 		"role_name": "", // Empty role name
 		"level":     0,  // Invalid level
 	}
-	
+
 	body, _ := json.Marshal(invalidReq)
 	req, _ := http.NewRequest(http.MethodPost, "/role", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.POST("/role", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.CreateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -288,22 +288,22 @@ func (suite *RoleControllerTestSuite) TestCreateRoleServiceError() {
 		Level:       5,
 		Permissions: []string{"read", "write"},
 	}
-	
+
 	suite.mockService.On("CreateRole", suite.ctx, mock.Anything, "admin").Return(nil, errors.New("service error"))
-	
+
 	body, _ := json.Marshal(roleReq)
 	req, _ := http.NewRequest(http.MethodPost, "/role", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.POST("/role", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.CreateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -318,17 +318,17 @@ func (suite *RoleControllerTestSuite) TestGetRole() {
 		Level:       10,
 		Permissions: []string{"admin", "read", "write"},
 	}
-	
+
 	suite.mockService.On("GetRoleAssignmentByID", "role-123").Return(expectedRole, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/role/role-123", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/role/:id", suite.roleController.GetRole)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -339,15 +339,15 @@ func (suite *RoleControllerTestSuite) TestGetRole() {
 // TestGetRoleNotFound tests GetRole when role not found
 func (suite *RoleControllerTestSuite) TestGetRoleNotFound() {
 	suite.mockService.On("GetRoleAssignmentByID", "nonexistent").Return(nil, errors.New("role not found"))
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/role/nonexistent", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/role/:id", suite.roleController.GetRole)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusNotFound, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -356,40 +356,36 @@ func (suite *RoleControllerTestSuite) TestGetRoleNotFound() {
 
 // TestUpdateRole tests the UpdateRole endpoint
 func (suite *RoleControllerTestSuite) TestUpdateRole() {
-	updateReq := models.UpdateRoleRequest{
-		Name:        "Updated Role",
-		Description: "Updated description",
-		Level:       &[]int{7}[0], // Pointer to int
-		Permissions: []string{"read", "write", "admin"},
-		Status:      models.RoleStatusActive,
-	}
-	
-	expectedRole := &models.Role{
-		ID:          "role-123",
-		Name:        "Updated Role",
-		Description: "Updated description",
+	updateReq := models.RoleAssignment{
+		RoleName:    "Updated Role",
 		Level:       7,
 		Permissions: []string{"read", "write", "admin"},
-		Status:      models.RoleStatusActive,
 	}
-	
-	suite.mockService.On("UpdateRole", "role-123", mock.MatchedBy(func(req *models.UpdateRoleRequest) bool {
-		return req.Name == "Updated Role" && *req.Level == 7
+
+	expectedRole := &models.RoleAssignment{
+		RoleID:      "role-123",
+		RoleName:    "Updated Role",
+		Level:       7,
+		Permissions: []string{"read", "write", "admin"},
+	}
+
+	suite.mockService.On("UpdateRoleAssignment", "role-123", mock.MatchedBy(func(req *models.RoleAssignment) bool {
+		return req.RoleName == "Updated Role" && req.Level == 7
 	}), "admin").Return(expectedRole, nil)
-	
+
 	body, _ := json.Marshal(updateReq)
 	req, _ := http.NewRequest(http.MethodPut, "/role/role-123", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.PUT("/role/:id", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.UpdateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -400,16 +396,16 @@ func (suite *RoleControllerTestSuite) TestUpdateRole() {
 func (suite *RoleControllerTestSuite) TestUpdateRoleInvalidRequest() {
 	req, _ := http.NewRequest(http.MethodPut, "/role/role-123", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.PUT("/role/:id", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.UpdateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -418,25 +414,27 @@ func (suite *RoleControllerTestSuite) TestUpdateRoleInvalidRequest() {
 
 // TestUpdateRoleServiceError tests UpdateRole when service returns error
 func (suite *RoleControllerTestSuite) TestUpdateRoleServiceError() {
-	updateReq := models.UpdateRoleRequest{
-		Name: "Updated Role",
+	updateReq := models.RoleAssignment{
+		RoleName:    "Updated Role",
+		Level:       5,
+		Permissions: []string{"read"},
 	}
-	
-	suite.mockService.On("UpdateRole", "role-123", mock.Anything, "admin").Return(nil, errors.New("service error"))
-	
+
+	suite.mockService.On("UpdateRoleAssignment", "role-123", mock.Anything, "admin").Return(nil, errors.New("service error"))
+
 	body, _ := json.Marshal(updateReq)
 	req, _ := http.NewRequest(http.MethodPut, "/role/role-123", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.PUT("/role/:id", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.UpdateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -445,16 +443,16 @@ func (suite *RoleControllerTestSuite) TestUpdateRoleServiceError() {
 
 // TestDeleteRole tests the DeleteRole endpoint
 func (suite *RoleControllerTestSuite) TestDeleteRole() {
-	suite.mockService.On("DeleteRole", "role-123").Return(nil)
-	
+	suite.mockService.On("DeleteRoleAssignment", "role-123").Return(nil)
+
 	req, _ := http.NewRequest(http.MethodDelete, "/role/role-123", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.DELETE("/role/:id", suite.roleController.DeleteRole)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -464,16 +462,16 @@ func (suite *RoleControllerTestSuite) TestDeleteRole() {
 
 // TestDeleteRoleServiceError tests DeleteRole when service returns error
 func (suite *RoleControllerTestSuite) TestDeleteRoleServiceError() {
-	suite.mockService.On("DeleteRole", "role-123").Return(errors.New("service error"))
-	
+	suite.mockService.On("DeleteRoleAssignment", "role-123").Return(errors.New("service error"))
+
 	req, _ := http.NewRequest(http.MethodDelete, "/role/role-123", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.DELETE("/role/:id", suite.roleController.DeleteRole)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -487,17 +485,17 @@ func (suite *RoleControllerTestSuite) TestGetRolesWithPagination() {
 	expectedRoles := []*models.RoleAssignment{
 		{RoleID: "role-1", RoleName: "Admin", Level: 10, Permissions: []string{"admin"}},
 	}
-	
+
 	suite.mockService.On("GetRoleAssignments").Return(expectedRoles, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/roles?page=1&limit=10", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/roles", suite.roleController.GetRoles)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -508,14 +506,14 @@ func (suite *RoleControllerTestSuite) TestGetRolesWithPagination() {
 func (suite *RoleControllerTestSuite) TestCreateRoleMalformedJSON() {
 	req, _ := http.NewRequest(http.MethodPost, "/role", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.POST("/role", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.CreateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 }
 
@@ -526,17 +524,17 @@ func (suite *RoleControllerTestSuite) TestCreateRoleWithoutUser() {
 		Level:       5,
 		Permissions: []string{"read"},
 	}
-	
+
 	body, _ := json.Marshal(roleReq)
 	req, _ := http.NewRequest(http.MethodPost, "/role", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.POST("/role", suite.roleController.CreateRole)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -547,29 +545,29 @@ func (suite *RoleControllerTestSuite) TestCreateRoleWithoutUser() {
 func (suite *RoleControllerTestSuite) TestGetRoleEmptyID() {
 	req, _ := http.NewRequest(http.MethodGet, "/role/", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/role/:id", suite.roleController.GetRole)
 	suite.router.ServeHTTP(w, req)
-	
+
 	// Should not match the route, resulting in 404
 	assert.Equal(suite.T(), http.StatusNotFound, w.Code)
 }
 
-// TestUpdateRoleEmptyID tests UpdateRole with empty ID  
+// TestUpdateRoleEmptyID tests UpdateRole with empty ID
 func (suite *RoleControllerTestSuite) TestUpdateRoleEmptyID() {
 	updateReq := models.UpdateRoleRequest{Name: "Test"}
-	
+
 	body, _ := json.Marshal(updateReq)
 	req, _ := http.NewRequest(http.MethodPut, "/role/", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	suite.router.PUT("/role/:id", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "admin"})
 		suite.roleController.UpdateRole(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	// Should not match the route, resulting in 404
 	assert.Equal(suite.T(), http.StatusNotFound, w.Code)
 }
@@ -578,10 +576,10 @@ func (suite *RoleControllerTestSuite) TestUpdateRoleEmptyID() {
 func (suite *RoleControllerTestSuite) TestDeleteRoleEmptyID() {
 	req, _ := http.NewRequest(http.MethodDelete, "/role/", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.DELETE("/role/:id", suite.roleController.DeleteRole)
 	suite.router.ServeHTTP(w, req)
-	
+
 	// Should not match the route, resulting in 404
 	assert.Equal(suite.T(), http.StatusNotFound, w.Code)
 }

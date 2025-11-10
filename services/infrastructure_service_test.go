@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 // MockInfraDatabaseClient implements the DatabaseClientInterface for testing
@@ -121,19 +121,19 @@ func (m *MockInfraLogger) Fatalf(format string, args ...interface{}) {
 // InfrastructureServiceTestSuite contains the test suite for InfrastructureService
 type InfrastructureServiceTestSuite struct {
 	suite.Suite
-	infraService   *InfrastructureService
-	mockDBClient   *MockInfraDatabaseClient
-	mockLogger     *MockInfraLogger
-	ctx            context.Context
-	config         *models.Config
-	tempDir        string
+	infraService *InfrastructureService
+	mockDBClient *MockInfraDatabaseClient
+	mockLogger   *MockInfraLogger
+	ctx          context.Context
+	config       *models.Config
+	tempDir      string
 }
 
 func (suite *InfrastructureServiceTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.mockDBClient = &MockInfraDatabaseClient{}
 	suite.mockLogger = &MockInfraLogger{}
-	
+
 	// Set up comprehensive mock expectations
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
@@ -143,18 +143,18 @@ func (suite *InfrastructureServiceTestSuite) SetupTest() {
 	suite.mockLogger.On("Infof", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Warnf", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Errorf", mock.Anything, mock.Anything).Maybe()
-	
+
 	suite.config = &models.Config{
 		AppEnv: "test",
 	}
-	
+
 	suite.infraService = NewInfrastructureService(
 		suite.ctx,
 		suite.mockDBClient,
 		suite.mockLogger,
 		suite.config,
 	)
-	
+
 	// Create temporary directory for test files
 	tempDir, err := os.MkdirTemp("", "infra_service_test")
 	assert.NoError(suite.T(), err)
@@ -175,7 +175,7 @@ func TestInfrastructureServiceTestSuite(t *testing.T) {
 // TestNewInfrastructureService tests the constructor
 func (suite *InfrastructureServiceTestSuite) TestNewInfrastructureService() {
 	service := NewInfrastructureService(suite.ctx, suite.mockDBClient, suite.mockLogger, suite.config)
-	
+
 	assert.NotNil(suite.T(), service)
 	assert.Equal(suite.T(), suite.ctx, service.ctx)
 	assert.Equal(suite.T(), suite.mockDBClient, service.dbClient)
@@ -193,18 +193,18 @@ func (suite *InfrastructureServiceTestSuite) TestGetWorkerStatus() {
 		Progress:  &models.ProgressInfo{Percentage: 50},
 		StartTime: time.Now().Add(-5 * time.Minute),
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.GetWorkerStatus(suite.ctx)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), models.StatusRunning, result.Status)
@@ -216,9 +216,9 @@ func (suite *InfrastructureServiceTestSuite) TestGetWorkerStatus() {
 // TestGetWorkerStatusFileNotFound tests GetWorkerStatus when status file doesn't exist
 func (suite *InfrastructureServiceTestSuite) TestGetWorkerStatusFileNotFound() {
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.GetWorkerStatus(suite.ctx)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "failed to read worker status file")
@@ -227,15 +227,15 @@ func (suite *InfrastructureServiceTestSuite) TestGetWorkerStatusFileNotFound() {
 // TestGetWorkerStatusInvalidJSON tests GetWorkerStatus with invalid JSON
 func (suite *InfrastructureServiceTestSuite) TestGetWorkerStatusInvalidJSON() {
 	statusFilePath := fmt.Sprintf("/tmp/fieldfuze-status-%s.json", suite.config.AppEnv)
-	
+
 	err := os.WriteFile(statusFilePath, []byte("invalid json"), 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.GetWorkerStatus(suite.ctx)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "failed to unmarshal worker status")
@@ -248,19 +248,19 @@ func (suite *InfrastructureServiceTestSuite) TestRestartWorkerWithForce() {
 	testResult := &models.ExecutionResult{
 		Status: models.StatusRunning,
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
 	suite.mockLogger.On("Warn", mock.Anything, mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.RestartWorker(suite.ctx, true)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), "infrastructure-worker", result.ServiceName)
@@ -274,18 +274,18 @@ func (suite *InfrastructureServiceTestSuite) TestRestartWorkerWithoutForce() {
 	testResult := &models.ExecutionResult{
 		Status: models.StatusRunning,
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.RestartWorker(suite.ctx, false)
-	
+
 	assert.Error(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), "failed", result.Status)
@@ -296,9 +296,9 @@ func (suite *InfrastructureServiceTestSuite) TestRestartWorkerWithoutForce() {
 func (suite *InfrastructureServiceTestSuite) TestRestartWorkerNoStatusFile() {
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
 	suite.mockLogger.On("Warn", mock.Anything, mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.RestartWorker(suite.ctx, false)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), "completed", result.Status)
@@ -313,16 +313,16 @@ func (suite *InfrastructureServiceTestSuite) TestIsWorkerHealthy() {
 		StartTime: time.Now().Add(-2 * time.Minute),
 		Progress:  &models.ProgressInfo{Percentage: 75},
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	isHealthy, reason, err := suite.infraService.IsWorkerHealthy()
-	
+
 	assert.NoError(suite.T(), err)
 	assert.True(suite.T(), isHealthy)
 	assert.Equal(suite.T(), "Worker is running normally", reason)
@@ -336,16 +336,16 @@ func (suite *InfrastructureServiceTestSuite) TestIsWorkerHealthyFailed() {
 		Status:       models.StatusFailed,
 		ErrorMessage: "Test error",
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	isHealthy, reason, err := suite.infraService.IsWorkerHealthy()
-	
+
 	assert.NoError(suite.T(), err)
 	assert.False(suite.T(), isHealthy)
 	assert.Contains(suite.T(), reason, "Worker failed")
@@ -354,7 +354,7 @@ func (suite *InfrastructureServiceTestSuite) TestIsWorkerHealthyFailed() {
 // TestIsWorkerHealthyNoStatusFile tests IsWorkerHealthy when status file doesn't exist
 func (suite *InfrastructureServiceTestSuite) TestIsWorkerHealthyNoStatusFile() {
 	isHealthy, reason, err := suite.infraService.IsWorkerHealthy()
-	
+
 	assert.Error(suite.T(), err)
 	assert.False(suite.T(), isHealthy)
 	assert.Contains(suite.T(), err.Error(), "failed to read worker status file")
@@ -370,20 +370,20 @@ func (suite *InfrastructureServiceTestSuite) TestAutoRestartIfNeededUnhealthy() 
 		Status:       models.StatusFailed,
 		ErrorMessage: "Test error",
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	suite.mockLogger.On("Warnf", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
 	suite.mockLogger.On("Warn", mock.Anything, mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.AutoRestartIfNeeded(suite.ctx)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), "completed", result.Status)
@@ -398,16 +398,16 @@ func (suite *InfrastructureServiceTestSuite) TestAutoRestartIfNeededHealthy() {
 		StartTime: time.Now().Add(-2 * time.Minute),
 		Progress:  &models.ProgressInfo{Percentage: 75},
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	result, err := suite.infraService.AutoRestartIfNeeded(suite.ctx)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), "not_needed", result.Status)
@@ -446,15 +446,15 @@ func (suite *InfrastructureServiceTestSuite) TestEnrichStatusWithContext() {
 			expectedPhase:  "Validation",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
 			result := &models.ExecutionResult{
 				Status: tc.status,
 			}
-			
+
 			suite.infraService.enrichStatusWithContext(result)
-			
+
 			assert.Equal(suite.T(), tc.expectedAction, result.NextAction)
 			assert.Equal(suite.T(), tc.expectedPhase, result.Phase)
 			assert.NotNil(suite.T(), result.EstimatedTime)
@@ -469,9 +469,9 @@ func (suite *InfrastructureServiceTestSuite) TestUpdateHealthIndicators() {
 		StartTime: time.Now().Add(-5 * time.Minute),
 		Progress:  &models.ProgressInfo{Percentage: 75},
 	}
-	
+
 	suite.infraService.updateHealthIndicators(result)
-	
+
 	assert.NotNil(suite.T(), result.HealthStatus)
 }
 
@@ -481,9 +481,9 @@ func (suite *InfrastructureServiceTestSuite) TestCalculateProgress() {
 		Status:   models.StatusRunning,
 		Progress: &models.ProgressInfo{Percentage: 75},
 	}
-	
+
 	progressInfo := suite.infraService.calculateProgress(result)
-	
+
 	assert.NotNil(suite.T(), progressInfo)
 	// Progress calculation is based on internal logic, just verify it returns something
 	assert.True(suite.T(), progressInfo.Percentage >= 0)
@@ -493,7 +493,7 @@ func (suite *InfrastructureServiceTestSuite) TestCalculateProgress() {
 func (suite *InfrastructureServiceTestSuite) TestDurationPtr() {
 	duration := 5 * time.Minute
 	ptr := suite.infraService.durationPtr(duration)
-	
+
 	assert.NotNil(suite.T(), ptr)
 	assert.Equal(suite.T(), duration, *ptr)
 }
@@ -503,7 +503,7 @@ func (suite *InfrastructureServiceTestSuite) TestKillWorkerProcess() {
 	// This test verifies the function runs without panicking
 	// since it deals with process management
 	err := suite.infraService.killWorkerProcess()
-	
+
 	// killWorkerProcess may not return error if no process is found
 	// Just verify it doesn't panic
 	_ = err
@@ -516,17 +516,17 @@ func (suite *InfrastructureServiceTestSuite) TestResetWorkerStatus() {
 	testResult := &models.ExecutionResult{
 		Status: models.StatusRunning,
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
-	
+
 	err = suite.infraService.resetWorkerStatus()
-	
+
 	assert.NoError(suite.T(), err)
-	
+
 	// Verify the file was removed
 	_, err = os.Stat(statusFilePath)
 	assert.True(suite.T(), os.IsNotExist(err))
@@ -537,7 +537,7 @@ func (suite *InfrastructureServiceTestSuite) TestStartWorkerProcess() {
 	// This test verifies the function attempts to start a process
 	// The function may succeed in test mode
 	err := suite.infraService.startWorkerProcess(suite.ctx)
-	
+
 	// Just verify it doesn't panic, error or success is acceptable
 	_ = err
 }
@@ -550,15 +550,15 @@ func (suite *InfrastructureServiceTestSuite) TestGetRetryCountFromMetadata() {
 			"retry_count": 3,
 		},
 	}
-	
+
 	count := suite.infraService.getRetryCountFromMetadata(result)
 	assert.Equal(suite.T(), 3, count)
-	
+
 	// Test with no metadata
 	result = &models.ExecutionResult{}
 	count = suite.infraService.getRetryCountFromMetadata(result)
 	assert.Equal(suite.T(), 0, count)
-	
+
 	// Test with metadata but no retry count
 	result = &models.ExecutionResult{
 		Metadata: map[string]interface{}{
@@ -577,31 +577,31 @@ func (suite *InfrastructureServiceTestSuite) TestGetWorkerStatusConcurrentAccess
 	testResult := &models.ExecutionResult{
 		Status: models.StatusRunning,
 	}
-	
+
 	data, err := json.Marshal(testResult)
 	assert.NoError(suite.T(), err)
-	
+
 	err = os.WriteFile(statusFilePath, data, 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
-	
+
 	// Test concurrent access
 	done := make(chan bool, 2)
-	
+
 	go func() {
 		_, err := suite.infraService.GetWorkerStatus(suite.ctx)
 		assert.NoError(suite.T(), err)
 		done <- true
 	}()
-	
+
 	go func() {
 		_, err := suite.infraService.GetWorkerStatus(suite.ctx)
 		assert.NoError(suite.T(), err)
 		done <- true
 	}()
-	
+
 	// Wait for both goroutines to complete
 	<-done
 	<-done
@@ -614,12 +614,12 @@ func (suite *InfrastructureServiceTestSuite) TestRestartWorkerEdgeCases() {
 	err := os.WriteFile(statusFilePath, []byte("corrupted"), 0644)
 	assert.NoError(suite.T(), err)
 	defer os.Remove(statusFilePath)
-	
+
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
 	suite.mockLogger.On("Warn", mock.Anything, mock.Anything).Maybe()
-	
+
 	result, err := suite.infraService.RestartWorker(suite.ctx, false)
-	
+
 	// Should still succeed despite corrupted status file
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "completed", result.Status)
@@ -632,21 +632,21 @@ func (suite *InfrastructureServiceTestSuite) TestCalculateProgressEdgeCases() {
 		Status:   models.StatusRunning,
 		Progress: &models.ProgressInfo{Percentage: 150},
 	}
-	
+
 	progressInfo := suite.infraService.calculateProgress(result)
-	
+
 	assert.NotNil(suite.T(), progressInfo)
 	// Progress calculation is based on internal logic
 	assert.True(suite.T(), progressInfo.Percentage >= 0)
-	
+
 	// Test with negative progress
 	result = &models.ExecutionResult{
 		Status:   models.StatusRunning,
 		Progress: &models.ProgressInfo{Percentage: -10},
 	}
-	
+
 	progressInfo = suite.infraService.calculateProgress(result)
-	
+
 	assert.NotNil(suite.T(), progressInfo)
 	// Progress calculation is based on internal logic
 	assert.True(suite.T(), progressInfo.Percentage >= 0)

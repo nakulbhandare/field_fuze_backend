@@ -133,7 +133,7 @@ func (suite *UserServiceTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.mockRepo = &MockUserRepository{}
 	suite.mockLogger = &MockLogger{}
-	
+
 	// Mock logger calls that might be made
 	suite.mockLogger.On("Debug", mock.Anything).Return().Maybe()
 	suite.mockLogger.On("Debugf", mock.AnythingOfType("string"), mock.Anything).Return().Maybe()
@@ -143,7 +143,7 @@ func (suite *UserServiceTestSuite) SetupTest() {
 	suite.mockLogger.On("Errorf", mock.AnythingOfType("string"), mock.Anything).Return().Maybe()
 	suite.mockLogger.On("Warn", mock.Anything).Return().Maybe()
 	suite.mockLogger.On("Warnf", mock.AnythingOfType("string"), mock.Anything).Return().Maybe()
-	
+
 	suite.userService = NewUserService(suite.ctx, suite.mockRepo, suite.mockLogger)
 }
 
@@ -155,7 +155,7 @@ func (suite *UserServiceTestSuite) TearDownTest() {
 // TestNewUserService tests the NewUserService function
 func (suite *UserServiceTestSuite) TestNewUserService() {
 	service := NewUserService(suite.ctx, suite.mockRepo, suite.mockLogger)
-	
+
 	assert.NotNil(suite.T(), service)
 	assert.Equal(suite.T(), suite.ctx, service.ctx)
 	assert.Equal(suite.T(), suite.mockRepo, service.repo)
@@ -172,7 +172,7 @@ func (suite *UserServiceTestSuite) TestCreateUser() {
 		Password:  "password123",
 		Status:    models.UserStatusActive,
 	}
-	
+
 	expectedUser := &models.User{
 		ID:        "user-123",
 		Email:     "test@example.com",
@@ -183,16 +183,16 @@ func (suite *UserServiceTestSuite) TestCreateUser() {
 		Status:    models.UserStatusActive,
 		CreatedAt: time.Now(),
 	}
-	
+
 	suite.mockRepo.On("CreateUser", suite.ctx, mock.MatchedBy(func(u *models.User) bool {
-		return u.Email == "test@example.com" && 
-			   u.Username == "testuser" && 
-			   u.FirstName == "Test" && 
-			   u.LastName == "User"
+		return u.Email == "test@example.com" &&
+			u.Username == "testuser" &&
+			u.FirstName == "Test" &&
+			u.LastName == "User"
 	})).Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.CreateUser(user)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), expectedUser.ID, result.ID)
@@ -203,32 +203,32 @@ func (suite *UserServiceTestSuite) TestCreateUser() {
 // TestCreateUserWithNormalization tests CreateUser with email/username normalization
 func (suite *UserServiceTestSuite) TestCreateUserWithNormalization() {
 	user := &models.User{
-		Email:     "Test@Example.Com",  // Mixed case, no whitespace (passes validation)
+		Email:     "Test@Example.Com", // Mixed case, no whitespace (passes validation)
 		Username:  "TestUser",         // Mixed case, no whitespace (passes validation)
 		FirstName: "Test",
 		LastName:  "User",
 		Password:  "password123",
 	}
-	
+
 	expectedUser := &models.User{
 		ID:        "user-123",
-		Email:     "test@example.com",  // Should be normalized to lowercase
+		Email:     "test@example.com", // Should be normalized to lowercase
 		Username:  "testuser",         // Should be normalized to lowercase
 		FirstName: "Test",
 		LastName:  "User",
 		Status:    models.UserStatusActive,
 	}
-	
+
 	suite.mockRepo.On("CreateUser", suite.ctx, mock.MatchedBy(func(u *models.User) bool {
-		return u.Email == "test@example.com" && 
-			   u.Username == "testuser" && 
-			   u.FirstName == "Test" && 
-			   u.LastName == "User" &&
-			   u.Password == "password123"
+		return u.Email == "test@example.com" &&
+			u.Username == "testuser" &&
+			u.FirstName == "Test" &&
+			u.LastName == "User" &&
+			u.Password == "password123"
 	})).Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.CreateUser(user)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "test@example.com", result.Email)
 	assert.Equal(suite.T(), "testuser", result.Username)
@@ -370,7 +370,7 @@ func (suite *UserServiceTestSuite) TestCreateUserValidationErrors() {
 			expectedErr: "last name must be less than 50 characters",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.CreateUser(tc.user)
@@ -389,11 +389,11 @@ func (suite *UserServiceTestSuite) TestCreateUserRepositoryError() {
 		LastName:  "User",
 		Password:  "password123",
 	}
-	
+
 	suite.mockRepo.On("CreateUser", suite.ctx, mock.Anything).Return(nil, errors.New("repository error"))
-	
+
 	result, err := suite.userService.CreateUser(user)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "repository error")
@@ -413,11 +413,11 @@ func (suite *UserServiceTestSuite) TestGetUsers() {
 			Username: "user2",
 		},
 	}
-	
+
 	suite.mockRepo.On("GetUser", "").Return(expectedUsers, nil)
-	
+
 	result, err := suite.userService.GetUsers()
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), result, 2)
 	assert.Equal(suite.T(), expectedUsers, result)
@@ -426,9 +426,9 @@ func (suite *UserServiceTestSuite) TestGetUsers() {
 // TestGetUsersError tests GetUsers when repository returns error
 func (suite *UserServiceTestSuite) TestGetUsersError() {
 	suite.mockRepo.On("GetUser", "").Return(nil, errors.New("repository error"))
-	
+
 	result, err := suite.userService.GetUsers()
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "repository error")
@@ -441,11 +441,11 @@ func (suite *UserServiceTestSuite) TestGetUserByID() {
 		Email:    "test@example.com",
 		Username: "testuser",
 	}
-	
+
 	suite.mockRepo.On("GetUser", "user-123").Return([]*models.User{expectedUser}, nil)
-	
+
 	result, err := suite.userService.GetUserByID("user-123")
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), expectedUser, result)
@@ -469,7 +469,7 @@ func (suite *UserServiceTestSuite) TestGetUserByIDValidationErrors() {
 			expectedErr: "user ID is required",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.GetUserByID(tc.userID)
@@ -482,9 +482,9 @@ func (suite *UserServiceTestSuite) TestGetUserByIDValidationErrors() {
 // TestGetUserByIDNotFound tests GetUserByID when user is not found
 func (suite *UserServiceTestSuite) TestGetUserByIDNotFound() {
 	suite.mockRepo.On("GetUser", "non-existent").Return([]*models.User{}, nil)
-	
+
 	result, err := suite.userService.GetUserByID("non-existent")
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "user not found")
@@ -493,9 +493,9 @@ func (suite *UserServiceTestSuite) TestGetUserByIDNotFound() {
 // TestGetUserByIDRepositoryError tests GetUserByID when repository returns error
 func (suite *UserServiceTestSuite) TestGetUserByIDRepositoryError() {
 	suite.mockRepo.On("GetUser", "user-123").Return(nil, errors.New("repository error"))
-	
+
 	result, err := suite.userService.GetUserByID("user-123")
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "repository error")
@@ -508,11 +508,11 @@ func (suite *UserServiceTestSuite) TestGetUserByEmail() {
 		Email:    "test@example.com",
 		Username: "testuser",
 	}
-	
+
 	suite.mockRepo.On("GetUser", "test@example.com").Return([]*models.User{expectedUser}, nil)
-	
+
 	result, err := suite.userService.GetUserByEmail("test@example.com")
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), expectedUser, result)
@@ -536,7 +536,7 @@ func (suite *UserServiceTestSuite) TestGetUserByEmailValidationErrors() {
 			expectedErr: "email is required",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.GetUserByEmail(tc.email)
@@ -549,9 +549,9 @@ func (suite *UserServiceTestSuite) TestGetUserByEmailValidationErrors() {
 // TestGetUserByEmailNotFound tests GetUserByEmail when user is not found
 func (suite *UserServiceTestSuite) TestGetUserByEmailNotFound() {
 	suite.mockRepo.On("GetUser", "notfound@example.com").Return([]*models.User{}, nil)
-	
+
 	result, err := suite.userService.GetUserByEmail("notfound@example.com")
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "user not found")
@@ -564,11 +564,11 @@ func (suite *UserServiceTestSuite) TestGetUserByUsername() {
 		Email:    "test@example.com",
 		Username: "testuser",
 	}
-	
+
 	suite.mockRepo.On("GetUser", "testuser").Return([]*models.User{expectedUser}, nil)
-	
+
 	result, err := suite.userService.GetUserByUsername("testuser")
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), expectedUser, result)
@@ -592,7 +592,7 @@ func (suite *UserServiceTestSuite) TestGetUserByUsernameValidationErrors() {
 			expectedErr: "username is required",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.GetUserByUsername(tc.username)
@@ -609,7 +609,7 @@ func (suite *UserServiceTestSuite) TestUpdateUser() {
 		LastName:  "Name",
 		Status:    models.UserStatusInactive,
 	}
-	
+
 	expectedUser := &models.User{
 		ID:        "user-123",
 		Email:     "test@example.com",
@@ -619,13 +619,13 @@ func (suite *UserServiceTestSuite) TestUpdateUser() {
 		Status:    models.UserStatusInactive,
 		UpdatedAt: time.Now(),
 	}
-	
+
 	suite.mockRepo.On("UpdateUser", "user-123", mock.MatchedBy(func(u *models.User) bool {
 		return u.FirstName == "Updated" && u.LastName == "Name"
 	})).Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.UpdateUser("user-123", userUpdate)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), "Updated", result.FirstName)
@@ -638,19 +638,19 @@ func (suite *UserServiceTestSuite) TestUpdateUserWithWhitespace() {
 		FirstName: "  Updated  ",
 		LastName:  "  Name  ",
 	}
-	
+
 	expectedUser := &models.User{
 		ID:        "user-123",
 		FirstName: "Updated",
 		LastName:  "Name",
 	}
-	
+
 	suite.mockRepo.On("UpdateUser", "user-123", mock.MatchedBy(func(u *models.User) bool {
 		return u.FirstName == "Updated" && u.LastName == "Name"
 	})).Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.UpdateUser("user-123", userUpdate)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "Updated", result.FirstName)
 	assert.Equal(suite.T(), "Name", result.LastName)
@@ -709,7 +709,7 @@ func (suite *UserServiceTestSuite) TestUpdateUserValidationErrors() {
 			expectedErr: "invalid status: invalid-status",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.UpdateUser(tc.userID, tc.user)
@@ -733,16 +733,16 @@ func (suite *UserServiceTestSuite) TestAssignRolesToUser() {
 			Level:    1,
 		},
 	}
-	
+
 	expectedUser := &models.User{
 		ID:    "user-123",
 		Roles: roleAssignments,
 	}
-	
+
 	suite.mockRepo.On("AssignRoles", suite.ctx, "user-123", roleAssignments).Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.AssignRolesToUser("user-123", roleAssignments)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Len(suite.T(), result.Roles, 2)
@@ -775,7 +775,7 @@ func (suite *UserServiceTestSuite) TestAssignRolesToUserValidationErrors() {
 			expectedErr:     "at least one role assignment is required",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.AssignRolesToUser(tc.userID, tc.roleAssignments)
@@ -792,16 +792,16 @@ func (suite *UserServiceTestSuite) TestAddRoleToUser() {
 		RoleName: "Admin",
 		Level:    10,
 	}
-	
+
 	expectedUser := &models.User{
-		ID: "user-123",
+		ID:    "user-123",
 		Roles: []models.RoleAssignment{roleAssignment},
 	}
-	
+
 	suite.mockRepo.On("AddRoleToUser", suite.ctx, "user-123", roleAssignment).Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.AddRoleToUser("user-123", roleAssignment)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Len(suite.T(), result.Roles, 1)
@@ -835,7 +835,7 @@ func (suite *UserServiceTestSuite) TestAddRoleToUserValidationErrors() {
 			expectedErr:    "role name is required",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.AddRoleToUser(tc.userID, tc.roleAssignment)
@@ -853,11 +853,11 @@ func (suite *UserServiceTestSuite) TestAssignRoleToUser() {
 			{RoleID: "role-123", RoleName: "Admin"},
 		},
 	}
-	
+
 	suite.mockRepo.On("AssignRoleToUser", suite.ctx, "user-123", "role-123").Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.AssignRoleToUser("user-123", "role-123")
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Len(suite.T(), result.Roles, 1)
@@ -884,7 +884,7 @@ func (suite *UserServiceTestSuite) TestAssignRoleToUserValidationErrors() {
 			expectedErr: "role ID is required",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.AssignRoleToUser(tc.userID, tc.roleID)
@@ -900,11 +900,11 @@ func (suite *UserServiceTestSuite) TestRemoveRoleFromUser() {
 		ID:    "user-123",
 		Roles: []models.RoleAssignment{},
 	}
-	
+
 	suite.mockRepo.On("RemoveRoleFromUser", suite.ctx, "user-123", "role-123").Return(expectedUser, nil)
-	
+
 	result, err := suite.userService.RemoveRoleFromUser("user-123", "role-123")
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Len(suite.T(), result.Roles, 0)
@@ -931,7 +931,7 @@ func (suite *UserServiceTestSuite) TestRemoveRoleFromUserValidationErrors() {
 			expectedErr: "role ID is required",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
 			_, err := suite.userService.RemoveRoleFromUser(tc.userID, tc.roleID)
@@ -957,11 +957,11 @@ func (suite *UserServiceTestSuite) TestGetUsersByStatus() {
 			Status: models.UserStatusActive,
 		},
 	}
-	
+
 	suite.mockRepo.On("GetUser", "").Return(allUsers, nil)
-	
+
 	result, err := suite.userService.GetUsersByStatus(models.UserStatusActive)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), result, 2)
 	assert.Equal(suite.T(), "user-1", result[0].ID)
@@ -971,7 +971,7 @@ func (suite *UserServiceTestSuite) TestGetUsersByStatus() {
 // TestGetUsersByStatusValidationError tests GetUsersByStatus with validation error
 func (suite *UserServiceTestSuite) TestGetUsersByStatusValidationError() {
 	_, err := suite.userService.GetUsersByStatus("")
-	
+
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "status is required")
 }
@@ -979,9 +979,9 @@ func (suite *UserServiceTestSuite) TestGetUsersByStatusValidationError() {
 // TestGetUsersByStatusRepositoryError tests GetUsersByStatus when repository returns error
 func (suite *UserServiceTestSuite) TestGetUsersByStatusRepositoryError() {
 	suite.mockRepo.On("GetUser", "").Return(nil, errors.New("repository error"))
-	
+
 	result, err := suite.userService.GetUsersByStatus(models.UserStatusActive)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "repository error")
@@ -999,11 +999,11 @@ func (suite *UserServiceTestSuite) TestGetUsersByStatusNoMatches() {
 			Status: models.UserStatusInactive,
 		},
 	}
-	
+
 	suite.mockRepo.On("GetUser", "").Return(allUsers, nil)
-	
+
 	result, err := suite.userService.GetUsersByStatus(models.UserStatusActive)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), result, 0)
 }
@@ -1021,9 +1021,9 @@ func TestValidateCreateUser(t *testing.T) {
 	mockLogger := &MockLogger{}
 	mockLogger.On("Debug", mock.Anything).Return().Maybe()
 	mockLogger.On("Debugf", mock.AnythingOfType("string"), mock.Anything).Return().Maybe()
-	
+
 	service := NewUserService(ctx, mockRepo, mockLogger)
-	
+
 	// Test valid user
 	validUser := &models.User{
 		Email:     "test@example.com",
@@ -1032,10 +1032,10 @@ func TestValidateCreateUser(t *testing.T) {
 		LastName:  "User",
 		Password:  "password123",
 	}
-	
+
 	err := service.validateCreateUser(validUser)
 	assert.NoError(t, err)
-	
+
 	// Test edge cases for email validation
 	validEmails := []string{
 		"test@example.com",
@@ -1044,23 +1044,23 @@ func TestValidateCreateUser(t *testing.T) {
 		"user123@example123.com",
 		"a@b.co",
 	}
-	
+
 	for _, email := range validEmails {
 		user := *validUser
 		user.Email = email
 		err := service.validateCreateUser(&user)
 		assert.NoError(t, err, "Email should be valid: %s", email)
 	}
-	
+
 	// Test edge cases for username validation
 	validUsernames := []string{
-		"abc",           // Minimum length
-		"user123",       // With numbers
-		"user_name",     // With underscore
-		"user-name",     // With hyphen
+		"abc",                   // Minimum length
+		"user123",               // With numbers
+		"user_name",             // With underscore
+		"user-name",             // With hyphen
 		strings.Repeat("a", 30), // Maximum length
 	}
-	
+
 	for _, username := range validUsernames {
 		user := *validUser
 		user.Username = username
@@ -1075,9 +1075,9 @@ func TestValidateUpdateUser(t *testing.T) {
 	mockLogger := &MockLogger{}
 	mockLogger.On("Debug", mock.Anything).Return().Maybe()
 	mockLogger.On("Debugf", mock.AnythingOfType("string"), mock.Anything).Return().Maybe()
-	
+
 	service := NewUserService(ctx, mockRepo, mockLogger)
-	
+
 	// Test valid updates
 	validUser := &models.User{
 		FirstName: "Updated",
@@ -1085,10 +1085,10 @@ func TestValidateUpdateUser(t *testing.T) {
 		Password:  "newpassword123",
 		Status:    models.UserStatusActive,
 	}
-	
+
 	err := service.validateUpdateUser(validUser)
 	assert.NoError(t, err)
-	
+
 	// Test all valid statuses
 	validStatuses := []models.UserStatus{
 		models.UserStatusActive,
@@ -1096,20 +1096,20 @@ func TestValidateUpdateUser(t *testing.T) {
 		models.UserStatusSuspended,
 		models.UserStatusPendingVerification,
 	}
-	
+
 	for _, status := range validStatuses {
 		user := &models.User{Status: status}
 		err := service.validateUpdateUser(user)
 		assert.NoError(t, err, "Status should be valid: %s", status)
 	}
-	
+
 	// Test empty fields are allowed in updates
 	emptyFieldsUser := &models.User{
 		FirstName: "",
 		LastName:  "",
 		Password:  "",
 	}
-	
+
 	err = service.validateUpdateUser(emptyFieldsUser)
 	assert.NoError(t, err)
 }
@@ -1120,50 +1120,50 @@ func TestValidateRoleAssignment(t *testing.T) {
 	mockLogger := &MockLogger{}
 	mockLogger.On("Debug", mock.Anything).Return().Maybe()
 	mockLogger.On("Debugf", mock.AnythingOfType("string"), mock.Anything).Return().Maybe()
-	
+
 	service := NewUserService(ctx, mockRepo, mockLogger)
-	
+
 	// Test valid role assignment
 	validRole := &models.RoleAssignment{
 		RoleID:   "role-123",
 		RoleName: "Admin",
 		Level:    10,
 	}
-	
+
 	err := service.validateRoleAssignment(validRole)
 	assert.NoError(t, err)
-	
+
 	// Test nil role assignment
 	err = service.validateRoleAssignment(nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "role assignment is required")
-	
+
 	// Test empty role ID
 	invalidRole := &models.RoleAssignment{
 		RoleID:   "",
 		RoleName: "Admin",
 	}
-	
+
 	err = service.validateRoleAssignment(invalidRole)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "role ID is required")
-	
+
 	// Test empty role name
 	invalidRole = &models.RoleAssignment{
 		RoleID:   "role-123",
 		RoleName: "",
 	}
-	
+
 	err = service.validateRoleAssignment(invalidRole)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "role name is required")
-	
+
 	// Test whitespace only fields
 	invalidRole = &models.RoleAssignment{
 		RoleID:   "   ",
 		RoleName: "   ",
 	}
-	
+
 	err = service.validateRoleAssignment(invalidRole)
 	assert.Error(t, err)
 }

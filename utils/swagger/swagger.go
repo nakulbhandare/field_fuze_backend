@@ -111,12 +111,12 @@ const swaggerHTML = `<!DOCTYPE html>
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
     <script>
         // Set authentication URL globally
-        window.AUTH_URL = "{{.AuthURL}}";
+        window.AUTH_URL = "{{js .AuthURL}}";
 
         window.onload = function() {
             // Initialize Swagger UI with stable configuration
             const ui = SwaggerUIBundle({
-                url: '{{.SwaggerDocURL}}',
+                url: '{{js .SwaggerDocURL}}',
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
@@ -261,7 +261,7 @@ const swaggerHTML = `<!DOCTYPE html>
             };
 
             // Start monitoring for auth dialogs
-            injectAuthForm();
+            startAuthDialogMonitoring();
         };
     </script>
 </body>

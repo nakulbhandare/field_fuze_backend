@@ -104,7 +104,7 @@ func (suite *OrganizationControllerTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.mockService = &MockOrganizationService{}
 	suite.mockLogger = &MockControllerLogger{}
-	
+
 	// Set up comprehensive mock expectations for all logger patterns
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
@@ -115,7 +115,7 @@ func (suite *OrganizationControllerTestSuite) SetupTest() {
 	suite.mockLogger.On("Infof", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Warnf", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Errorf", mock.Anything, mock.Anything).Maybe()
-	
+
 	suite.orgController = NewOrganizationController(suite.ctx, suite.mockService, suite.mockLogger)
 	suite.router = gin.New()
 }
@@ -127,7 +127,7 @@ func TestOrganizationControllerTestSuite(t *testing.T) {
 // TestNewOrganizationController tests the constructor
 func (suite *OrganizationControllerTestSuite) TestNewOrganizationController() {
 	controller := NewOrganizationController(suite.ctx, suite.mockService, suite.mockLogger)
-	
+
 	assert.NotNil(suite.T(), controller)
 	assert.Equal(suite.T(), suite.ctx, controller.ctx)
 	assert.Equal(suite.T(), suite.mockService, controller.organizationService)
@@ -138,37 +138,37 @@ func (suite *OrganizationControllerTestSuite) TestNewOrganizationController() {
 // TestCreateOrganization tests successful organization creation
 func (suite *OrganizationControllerTestSuite) TestCreateOrganization() {
 	orgReq := models.Organization{
-		Name:    "Test Organization",
-		Email:   "test@example.com",
-		Phone:   "+1234567890",
-		Status:  "active",
+		Name:   "Test Organization",
+		Email:  "test@example.com",
+		Phone:  "+1234567890",
+		Status: "active",
 	}
-	
+
 	expectedOrg := &models.Organization{
-		ID:      "org-123",
-		Name:    "Test Organization",
-		Email:   "test@example.com",
-		Phone:   "+1234567890",
-		Status:  "active",
+		ID:     "org-123",
+		Name:   "Test Organization",
+		Email:  "test@example.com",
+		Phone:  "+1234567890",
+		Status: "active",
 	}
-	
+
 	suite.mockService.On("CreateOrganization", suite.ctx, mock.MatchedBy(func(org *models.Organization) bool {
 		return org.Name == "Test Organization" && org.Email == "test@example.com"
 	}), "user-123").Return(expectedOrg, nil)
-	
+
 	body, _ := json.Marshal(orgReq)
 	req, _ := http.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	
+
 	suite.router.POST("/organization", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "user-123"})
 		suite.orgController.CreateOrganization(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusCreated, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -179,19 +179,19 @@ func (suite *OrganizationControllerTestSuite) TestCreateOrganization() {
 // TestCreateOrganizationInvalidJSON tests invalid JSON binding
 func (suite *OrganizationControllerTestSuite) TestCreateOrganizationInvalidJSON() {
 	invalidJSON := `{"name": "Test Org", "email": invalid-email}`
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/organization", bytes.NewBufferString(invalidJSON))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	
+
 	suite.router.POST("/organization", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "user-123"})
 		suite.orgController.CreateOrganization(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -205,20 +205,20 @@ func (suite *OrganizationControllerTestSuite) TestCreateOrganizationValidationFa
 		Name:  "", // Empty name should fail validation
 		Email: "invalid-email",
 	}
-	
+
 	body, _ := json.Marshal(orgReq)
 	req, _ := http.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	
+
 	suite.router.POST("/organization", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "user-123"})
 		suite.orgController.CreateOrganization(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -229,21 +229,21 @@ func (suite *OrganizationControllerTestSuite) TestCreateOrganizationValidationFa
 // TestCreateOrganizationNoJWTClaims tests missing JWT claims
 func (suite *OrganizationControllerTestSuite) TestCreateOrganizationNoJWTClaims() {
 	orgReq := models.Organization{
-		Name:    "Test Organization",
-		Email:   "test@example.com",
-		Status:  "active",
+		Name:   "Test Organization",
+		Email:  "test@example.com",
+		Status: "active",
 	}
-	
+
 	body, _ := json.Marshal(orgReq)
 	req, _ := http.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	
+
 	suite.router.POST("/organization", suite.orgController.CreateOrganization)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -254,24 +254,24 @@ func (suite *OrganizationControllerTestSuite) TestCreateOrganizationNoJWTClaims(
 // TestCreateOrganizationInvalidJWTClaims tests invalid JWT claims type
 func (suite *OrganizationControllerTestSuite) TestCreateOrganizationInvalidJWTClaims() {
 	orgReq := models.Organization{
-		Name:    "Test Organization",
-		Email:   "test@example.com",
-		Status:  "active",
+		Name:   "Test Organization",
+		Email:  "test@example.com",
+		Status: "active",
 	}
-	
+
 	body, _ := json.Marshal(orgReq)
 	req, _ := http.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	
+
 	suite.router.POST("/organization", func(c *gin.Context) {
 		c.Set("jwt_claims", "invalid-claims") // Invalid type
 		suite.orgController.CreateOrganization(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -282,26 +282,26 @@ func (suite *OrganizationControllerTestSuite) TestCreateOrganizationInvalidJWTCl
 // TestCreateOrganizationServiceError tests service error during creation
 func (suite *OrganizationControllerTestSuite) TestCreateOrganizationServiceError() {
 	orgReq := models.Organization{
-		Name:    "Test Organization",
-		Email:   "test@example.com",
-		Status:  "active",
+		Name:   "Test Organization",
+		Email:  "test@example.com",
+		Status: "active",
 	}
-	
+
 	suite.mockService.On("CreateOrganization", suite.ctx, mock.Anything, "user-123").Return(nil, errors.New("database error"))
-	
+
 	body, _ := json.Marshal(orgReq)
 	req, _ := http.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	
+
 	suite.router.POST("/organization", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "user-123"})
 		suite.orgController.CreateOrganization(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -312,26 +312,26 @@ func (suite *OrganizationControllerTestSuite) TestCreateOrganizationServiceError
 // TestCreateOrganizationConflict tests organization already exists error
 func (suite *OrganizationControllerTestSuite) TestCreateOrganizationConflict() {
 	orgReq := models.Organization{
-		Name:    "Test Organization",
-		Email:   "test@example.com",
-		Status:  "active",
+		Name:   "Test Organization",
+		Email:  "test@example.com",
+		Status: "active",
 	}
-	
+
 	suite.mockService.On("CreateOrganization", suite.ctx, mock.Anything, "user-123").Return(nil, errors.New("organization with this name already exists"))
-	
+
 	body, _ := json.Marshal(orgReq)
 	req, _ := http.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	
+
 	suite.router.POST("/organization", func(c *gin.Context) {
 		c.Set("jwt_claims", &models.JWTClaims{UserID: "user-123"})
 		suite.orgController.CreateOrganization(c)
 	})
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusConflict, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -355,23 +355,23 @@ func (suite *OrganizationControllerTestSuite) TestGetOrganizations() {
 			Status: "active",
 		},
 	}
-	
+
 	suite.mockService.On("GetOrganizations", "").Return(expectedOrgs, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/organization", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/organization", suite.orgController.GetOrganizations)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", response.Status)
 	assert.Equal(suite.T(), "Roles retrieved successfully", response.Message)
-	
+
 	// Check pagination data structure
 	data, ok := response.Data.(map[string]interface{})
 	assert.True(suite.T(), ok)
@@ -386,26 +386,26 @@ func (suite *OrganizationControllerTestSuite) TestGetOrganizationsWithPagination
 		{ID: "org-2", Name: "Organization 2", Status: "active"},
 		{ID: "org-3", Name: "Organization 3", Status: "active"},
 	}
-	
+
 	suite.mockService.On("GetOrganizations", "").Return(expectedOrgs, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/organization?page=2&limit=2", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/organization", suite.orgController.GetOrganizations)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", response.Status)
-	
+
 	// Check pagination values
 	data, ok := response.Data.(map[string]interface{})
 	assert.True(suite.T(), ok)
-	
+
 	pagination, ok := data["pagination"].(map[string]interface{})
 	assert.True(suite.T(), ok)
 	assert.Equal(suite.T(), float64(2), pagination["page"])
@@ -416,15 +416,15 @@ func (suite *OrganizationControllerTestSuite) TestGetOrganizationsWithPagination
 // TestGetOrganizationsServiceError tests service error during retrieval
 func (suite *OrganizationControllerTestSuite) TestGetOrganizationsServiceError() {
 	suite.mockService.On("GetOrganizations", "").Return(nil, errors.New("database error"))
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/organization", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/organization", suite.orgController.GetOrganizations)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -437,26 +437,26 @@ func (suite *OrganizationControllerTestSuite) TestGetOrganizationsInvalidPagePar
 	expectedOrgs := []*models.Organization{
 		{ID: "org-1", Name: "Organization 1", Status: "active"},
 	}
-	
+
 	suite.mockService.On("GetOrganizations", "").Return(expectedOrgs, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/organization?page=invalid&limit=abc", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/organization", suite.orgController.GetOrganizations)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", response.Status)
-	
+
 	// Should default to page=1, limit=10
 	data, ok := response.Data.(map[string]interface{})
 	assert.True(suite.T(), ok)
-	
+
 	pagination, ok := data["pagination"].(map[string]interface{})
 	assert.True(suite.T(), ok)
 	assert.Equal(suite.T(), float64(1), pagination["page"])
@@ -466,26 +466,26 @@ func (suite *OrganizationControllerTestSuite) TestGetOrganizationsInvalidPagePar
 // TestGetOrganizationsEmptyResult tests empty organization list
 func (suite *OrganizationControllerTestSuite) TestGetOrganizationsEmptyResult() {
 	expectedOrgs := []*models.Organization{}
-	
+
 	suite.mockService.On("GetOrganizations", "").Return(expectedOrgs, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/organization", nil)
 	w := httptest.NewRecorder()
-	
+
 	suite.router.GET("/organization", suite.orgController.GetOrganizations)
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", response.Status)
-	
+
 	// Check empty organizations array
 	data, ok := response.Data.(map[string]interface{})
 	assert.True(suite.T(), ok)
-	
+
 	organizations, ok := data["organizations"].([]interface{})
 	assert.True(suite.T(), ok)
 	assert.Len(suite.T(), organizations, 0)
@@ -520,7 +520,7 @@ func (suite *OrganizationControllerTestSuite) TestFormatValidationErrors() {
 			expected: []string{"Name must be at most 5 characters/items"},
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
 			err := suite.orgController.validator.Struct(tc.mockReq)

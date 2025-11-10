@@ -140,7 +140,7 @@ func (suite *DALTestSuite) TestPrintPrettyJSON() {
 			"key": "value",
 		},
 	}
-	
+
 	result := PrintPrettyJSON(data)
 	assert.NotEmpty(suite.T(), result)
 	assert.Contains(suite.T(), result, "\"name\": \"test\"")
@@ -171,18 +171,18 @@ func (suite *DALTestSuite) TestGetItemByPrimaryKey() {
 		KeyValue:  "test-id",
 		KeyType:   models.StringType,
 	}
-	
+
 	// Mock successful response
 	mockResult := map[string]interface{}{
 		"id":   "test-id",
 		"name": "test-name",
 	}
-	
+
 	suite.mockClient.On("GetItem", ctx, config, mock.AnythingOfType("*map[string]interface {}")).Return(mockResult, nil)
-	
+
 	var result map[string]interface{}
 	err := suite.mockClient.GetItem(ctx, config, &result)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "test-id", result["id"])
 	assert.Equal(suite.T(), "test-name", result["name"])
@@ -197,12 +197,12 @@ func (suite *DALTestSuite) TestGetItemByPrimaryKeyNotFound() {
 		KeyValue:  "non-existent",
 		KeyType:   models.StringType,
 	}
-	
+
 	suite.mockClient.On("GetItem", ctx, config, mock.AnythingOfType("*map[string]interface {}")).Return(nil, errors.New("item not found"))
-	
+
 	var result map[string]interface{}
 	err := suite.mockClient.GetItem(ctx, config, &result)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "item not found")
 }
@@ -216,12 +216,12 @@ func (suite *DALTestSuite) TestGetItemByPrimaryKeyError() {
 		KeyValue:  "test-id",
 		KeyType:   models.StringType,
 	}
-	
+
 	suite.mockClient.On("GetItem", ctx, config, mock.AnythingOfType("*map[string]interface {}")).Return(nil, errors.New("DynamoDB error"))
-	
+
 	var result map[string]interface{}
 	err := suite.mockClient.GetItem(ctx, config, &result)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "DynamoDB error")
 }
@@ -236,18 +236,18 @@ func (suite *DALTestSuite) TestGetItemByIndex() {
 		KeyValue:  "test@example.com",
 		KeyType:   models.StringType,
 	}
-	
+
 	// Mock successful response
 	mockResult := map[string]interface{}{
 		"id":    "test-id",
 		"email": "test@example.com",
 	}
-	
+
 	suite.mockClient.On("GetItem", ctx, config, mock.AnythingOfType("*map[string]interface {}")).Return(mockResult, nil)
-	
+
 	var result map[string]interface{}
 	err := suite.mockClient.GetItem(ctx, config, &result)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "test-id", result["id"])
 	assert.Equal(suite.T(), "test@example.com", result["email"])
@@ -261,9 +261,9 @@ func (suite *DALTestSuite) TestPutItem() {
 		"id":   "test-id",
 		"name": "test-name",
 	}
-	
+
 	suite.mockClient.On("PutItem", ctx, tableName, item).Return(nil)
-	
+
 	err := suite.mockClient.PutItem(ctx, tableName, item)
 	assert.NoError(suite.T(), err)
 }
@@ -276,9 +276,9 @@ func (suite *DALTestSuite) TestPutItemError() {
 		"id":   "test-id",
 		"name": "test-name",
 	}
-	
+
 	suite.mockClient.On("PutItem", ctx, tableName, item).Return(errors.New("PutItem error"))
-	
+
 	err := suite.mockClient.PutItem(ctx, tableName, item)
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "PutItem error")
@@ -294,9 +294,9 @@ func (suite *DALTestSuite) TestUpdateItem() {
 		"name":       "updated-name",
 		"updated_at": time.Now(),
 	}
-	
+
 	suite.mockClient.On("UpdateItem", ctx, tableName, key, keyValue, updates).Return(nil)
-	
+
 	err := suite.mockClient.UpdateItem(ctx, tableName, key, keyValue, updates)
 	assert.NoError(suite.T(), err)
 }
@@ -310,9 +310,9 @@ func (suite *DALTestSuite) TestUpdateItemError() {
 	updates := map[string]interface{}{
 		"name": "updated-name",
 	}
-	
+
 	suite.mockClient.On("UpdateItem", ctx, tableName, key, keyValue, updates).Return(errors.New("UpdateItem error"))
-	
+
 	err := suite.mockClient.UpdateItem(ctx, tableName, key, keyValue, updates)
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "UpdateItem error")
@@ -324,9 +324,9 @@ func (suite *DALTestSuite) TestDeleteItem() {
 	tableName := "test-table"
 	key := "id"
 	value := "test-id"
-	
+
 	suite.mockClient.On("DeleteItem", ctx, tableName, key, value).Return(nil)
-	
+
 	err := suite.mockClient.DeleteItem(ctx, tableName, key, value)
 	assert.NoError(suite.T(), err)
 }
@@ -337,9 +337,9 @@ func (suite *DALTestSuite) TestDeleteItemError() {
 	tableName := "test-table"
 	key := "id"
 	value := "test-id"
-	
+
 	suite.mockClient.On("DeleteItem", ctx, tableName, key, value).Return(errors.New("DeleteItem error"))
-	
+
 	err := suite.mockClient.DeleteItem(ctx, tableName, key, value)
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "DeleteItem error")
@@ -352,7 +352,7 @@ func (suite *DALTestSuite) TestQueryByIndex() {
 	indexName := "test-index"
 	keyName := "email"
 	keyValue := "test@example.com"
-	
+
 	// Mock successful response
 	mockResults := []map[string]interface{}{
 		{
@@ -364,12 +364,12 @@ func (suite *DALTestSuite) TestQueryByIndex() {
 			"email": "test@example.com",
 		},
 	}
-	
+
 	suite.mockClient.On("QueryByIndex", ctx, tableName, indexName, keyName, keyValue, mock.AnythingOfType("*[]map[string]interface {}")).Return(mockResults, nil)
-	
+
 	var results []map[string]interface{}
 	err := suite.mockClient.QueryByIndex(ctx, tableName, indexName, keyName, keyValue, &results)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), results, 2)
 	assert.Equal(suite.T(), "test-id-1", results[0]["id"])
@@ -383,12 +383,12 @@ func (suite *DALTestSuite) TestQueryByIndexError() {
 	indexName := "test-index"
 	keyName := "email"
 	keyValue := "test@example.com"
-	
+
 	suite.mockClient.On("QueryByIndex", ctx, tableName, indexName, keyName, keyValue, mock.AnythingOfType("*[]map[string]interface {}")).Return(nil, errors.New("Query error"))
-	
+
 	var results []map[string]interface{}
 	err := suite.mockClient.QueryByIndex(ctx, tableName, indexName, keyName, keyValue, &results)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "Query error")
 }
@@ -397,7 +397,7 @@ func (suite *DALTestSuite) TestQueryByIndexError() {
 func (suite *DALTestSuite) TestScan() {
 	ctx := context.Background()
 	tableName := "test-table"
-	
+
 	// Mock successful response
 	mockResults := []map[string]interface{}{
 		{
@@ -409,12 +409,12 @@ func (suite *DALTestSuite) TestScan() {
 			"name": "test-name-2",
 		},
 	}
-	
+
 	suite.mockClient.On("Scan", ctx, tableName, mock.AnythingOfType("*[]map[string]interface {}")).Return(mockResults, nil)
-	
+
 	var results []map[string]interface{}
 	err := suite.mockClient.Scan(ctx, tableName, &results)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), results, 2)
 	assert.Equal(suite.T(), "test-id-1", results[0]["id"])
@@ -425,12 +425,12 @@ func (suite *DALTestSuite) TestScan() {
 func (suite *DALTestSuite) TestScanError() {
 	ctx := context.Background()
 	tableName := "test-table"
-	
+
 	suite.mockClient.On("Scan", ctx, tableName, mock.AnythingOfType("*[]map[string]interface {}")).Return(nil, errors.New("Scan error"))
-	
+
 	var results []map[string]interface{}
 	err := suite.mockClient.Scan(ctx, tableName, &results)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "Scan error")
 }
@@ -439,7 +439,7 @@ func (suite *DALTestSuite) TestScanError() {
 func (suite *DALTestSuite) TestScanTable() {
 	ctx := context.Background()
 	tableName := "test-table"
-	
+
 	// Mock successful response
 	mockResults := []map[string]interface{}{
 		{
@@ -447,12 +447,12 @@ func (suite *DALTestSuite) TestScanTable() {
 			"name": "test-name",
 		},
 	}
-	
+
 	suite.mockClient.On("ScanTable", ctx, tableName, mock.AnythingOfType("*[]map[string]interface {}")).Return(mockResults, nil)
-	
+
 	var results []map[string]interface{}
 	err := suite.mockClient.ScanTable(ctx, tableName, &results)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), results, 1)
 	assert.Equal(suite.T(), "test-id", results[0]["id"])
@@ -464,9 +464,9 @@ func (suite *DALTestSuite) TestCreateTable() {
 	input := &dynamodb.CreateTableInput{
 		TableName: &[]string{"test-table"}[0],
 	}
-	
+
 	suite.mockClient.On("CreateTable", ctx, input).Return(nil)
-	
+
 	err := suite.mockClient.CreateTable(ctx, input)
 	assert.NoError(suite.T(), err)
 }
@@ -477,9 +477,9 @@ func (suite *DALTestSuite) TestCreateTableError() {
 	input := &dynamodb.CreateTableInput{
 		TableName: &[]string{"test-table"}[0],
 	}
-	
+
 	suite.mockClient.On("CreateTable", ctx, input).Return(errors.New("CreateTable error"))
-	
+
 	err := suite.mockClient.CreateTable(ctx, input)
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "CreateTable error")
@@ -489,18 +489,18 @@ func (suite *DALTestSuite) TestCreateTableError() {
 func (suite *DALTestSuite) TestDescribeTable() {
 	ctx := context.Background()
 	tableName := "test-table"
-	
+
 	// Mock successful response
 	mockOutput := &dynamodb.DescribeTableOutput{
 		Table: &types.TableDescription{
 			TableName: &tableName,
 		},
 	}
-	
+
 	suite.mockClient.On("DescribeTable", ctx, tableName).Return(mockOutput, nil)
-	
+
 	result, err := suite.mockClient.DescribeTable(ctx, tableName)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), tableName, *result.Table.TableName)
@@ -510,11 +510,11 @@ func (suite *DALTestSuite) TestDescribeTable() {
 func (suite *DALTestSuite) TestDescribeTableError() {
 	ctx := context.Background()
 	tableName := "test-table"
-	
+
 	suite.mockClient.On("DescribeTable", ctx, tableName).Return(nil, errors.New("DescribeTable error"))
-	
+
 	result, err := suite.mockClient.DescribeTable(ctx, tableName)
-	
+
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
 	assert.Contains(suite.T(), err.Error(), "DescribeTable error")
@@ -526,9 +526,9 @@ func (suite *DALTestSuite) TestDeleteTable() {
 	input := &dynamodb.DeleteTableInput{
 		TableName: &[]string{"test-table"}[0],
 	}
-	
+
 	suite.mockClient.On("DeleteTable", ctx, input).Return(nil)
-	
+
 	err := suite.mockClient.DeleteTable(ctx, input)
 	assert.NoError(suite.T(), err)
 }
@@ -539,9 +539,9 @@ func (suite *DALTestSuite) TestDeleteTableError() {
 	input := &dynamodb.DeleteTableInput{
 		TableName: &[]string{"test-table"}[0],
 	}
-	
+
 	suite.mockClient.On("DeleteTable", ctx, input).Return(errors.New("DeleteTable error"))
-	
+
 	err := suite.mockClient.DeleteTable(ctx, input)
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "DeleteTable error")
@@ -561,7 +561,7 @@ func TestNewDALContainerSuccess(t *testing.T) {
 	container := &DALContainer{
 		databaseClient: mockClient,
 	}
-	
+
 	assert.NotNil(t, container)
 	assert.NotNil(t, container.GetDatabaseClient())
 	assert.Equal(t, mockClient, container.GetDatabaseClient())
@@ -583,7 +583,7 @@ func TestQueryConfig(t *testing.T) {
 		KeyValue:  "test-value",
 		KeyType:   models.StringType,
 	}
-	
+
 	assert.Equal(t, "test-table", config.TableName)
 	assert.Equal(t, "test-index", config.IndexName)
 	assert.Equal(t, "test-key", config.KeyName)
@@ -623,7 +623,7 @@ func TestPrintPrettyJSONEdgeCases(t *testing.T) {
 			expected: "true",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := PrintPrettyJSON(tc.input)
@@ -638,11 +638,11 @@ func TestDALContainerInterface(t *testing.T) {
 	container := &DALContainer{
 		databaseClient: mockClient,
 	}
-	
+
 	// Test interface compliance
 	var dalContainer DALContainerInterface = container
 	assert.NotNil(t, dalContainer)
-	
+
 	client := dalContainer.GetDatabaseClient()
 	assert.NotNil(t, client)
 	assert.Equal(t, mockClient, client)
@@ -651,7 +651,7 @@ func TestDALContainerInterface(t *testing.T) {
 // TestDatabaseClientInterface tests that our mock implements the interface correctly
 func TestDatabaseClientInterface(t *testing.T) {
 	mockClient := &MockDatabaseClient{}
-	
+
 	// Test interface compliance
 	var dbClient DatabaseClientInterface = mockClient
 	assert.NotNil(t, dbClient)
@@ -661,53 +661,53 @@ func TestDatabaseClientInterface(t *testing.T) {
 func TestMockClientMethodSignatures(t *testing.T) {
 	mockClient := &MockDatabaseClient{}
 	ctx := context.Background()
-	
+
 	// Test that all methods exist and can be called without panicking
 	config := models.QueryConfig{TableName: "test", KeyName: "id", KeyValue: "1", KeyType: models.StringType}
 	var result map[string]interface{}
-	
+
 	mockClient.On("GetItem", ctx, config, &result).Return(nil, errors.New("test"))
 	err := mockClient.GetItem(ctx, config, &result)
 	assert.Error(t, err)
-	
+
 	mockClient.On("PutItem", ctx, "table", mock.Anything).Return(errors.New("test"))
 	err = mockClient.PutItem(ctx, "table", map[string]string{})
 	assert.Error(t, err)
-	
+
 	mockClient.On("UpdateItem", ctx, "table", "key", "value", mock.Anything).Return(errors.New("test"))
 	err = mockClient.UpdateItem(ctx, "table", "key", "value", map[string]interface{}{})
 	assert.Error(t, err)
-	
+
 	mockClient.On("DeleteItem", ctx, "table", "key", "value").Return(errors.New("test"))
 	err = mockClient.DeleteItem(ctx, "table", "key", "value")
 	assert.Error(t, err)
-	
+
 	var results []map[string]interface{}
 	mockClient.On("QueryByIndex", ctx, "table", "index", "key", "value", &results).Return(nil, errors.New("test"))
 	err = mockClient.QueryByIndex(ctx, "table", "index", "key", "value", &results)
 	assert.Error(t, err)
-	
+
 	mockClient.On("Scan", ctx, "table", &results).Return(nil, errors.New("test"))
 	err = mockClient.Scan(ctx, "table", &results)
 	assert.Error(t, err)
-	
+
 	mockClient.On("ScanTable", ctx, "table", &results).Return(nil, errors.New("test"))
 	err = mockClient.ScanTable(ctx, "table", &results)
 	assert.Error(t, err)
-	
+
 	input := &dynamodb.CreateTableInput{}
 	mockClient.On("CreateTable", ctx, input).Return(errors.New("test"))
 	err = mockClient.CreateTable(ctx, input)
 	assert.Error(t, err)
-	
+
 	mockClient.On("DescribeTable", ctx, "table").Return(nil, errors.New("test"))
 	_, err = mockClient.DescribeTable(ctx, "table")
 	assert.Error(t, err)
-	
+
 	deleteInput := &dynamodb.DeleteTableInput{}
 	mockClient.On("DeleteTable", ctx, deleteInput).Return(errors.New("test"))
 	err = mockClient.DeleteTable(ctx, deleteInput)
 	assert.Error(t, err)
-	
+
 	mockClient.AssertExpectations(t)
 }

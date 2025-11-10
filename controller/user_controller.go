@@ -32,8 +32,10 @@ func NewUserController(ctx context.Context, userService services.UserServiceInte
 
 // invalidateUserPermissions clears permission cache and logs security events
 func (h *UserController) invalidateUserPermissions(userID, operation string) {
-	// Clear permission cache through JWT manager
-	h.jwtManager.ClearPermissionCache()
+	// Clear permission cache through JWT manager if available
+	if h.jwtManager != nil {
+		h.jwtManager.ClearPermissionCache()
+	}
 
 	// Log security event for audit trail
 	h.logger.Infof("SECURITY EVENT: Permission cache cleared for user %s due to %s", userID, operation)

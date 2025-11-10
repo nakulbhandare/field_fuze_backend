@@ -31,19 +31,19 @@ func (suite *LoginFormTestSuite) TestServeSwaggerWithLogin() {
 		Title:   "Login Test API",
 		SpecURL: "/swagger/doc.json",
 	}
-	
+
 	handler := ServeSwaggerWithLogin(config)
 	suite.router.GET("/swagger-login", handler)
-	
+
 	req, err := http.NewRequest("GET", "/swagger-login", nil)
 	require.NoError(suite.T(), err)
-	
+
 	w := httptest.NewRecorder()
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
 	assert.Equal(suite.T(), "text/html; charset=utf-8", w.Header().Get("Content-Type"))
-	
+
 	body := w.Body.String()
 	assert.Contains(suite.T(), body, "Login Test API")
 	assert.Contains(suite.T(), body, "/swagger/doc.json")
@@ -54,18 +54,18 @@ func (suite *LoginFormTestSuite) TestServeSwaggerWithLogin() {
 // TestServeSwaggerWithLoginDefaults tests ServeSwaggerWithLogin with empty config
 func (suite *LoginFormTestSuite) TestServeSwaggerWithLoginDefaults() {
 	config := LoginConfig{} // Empty config
-	
+
 	handler := ServeSwaggerWithLogin(config)
 	suite.router.GET("/swagger-login", handler)
-	
+
 	req, err := http.NewRequest("GET", "/swagger-login", nil)
 	require.NoError(suite.T(), err)
-	
+
 	w := httptest.NewRecorder()
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	body := w.Body.String()
 	// Check for empty values in template
 	assert.Contains(suite.T(), body, "<title></title>")
@@ -78,18 +78,18 @@ func (suite *LoginFormTestSuite) TestServeSwaggerWithLoginPartialConfig() {
 		Title: "Partial Config API",
 		// SpecURL left empty
 	}
-	
+
 	handler := ServeSwaggerWithLogin(config)
 	suite.router.GET("/swagger-login", handler)
-	
+
 	req, err := http.NewRequest("GET", "/swagger-login", nil)
 	require.NoError(suite.T(), err)
-	
+
 	w := httptest.NewRecorder()
 	suite.router.ServeHTTP(w, req)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	body := w.Body.String()
 	assert.Contains(suite.T(), body, "Partial Config API")
 	assert.Contains(suite.T(), body, "url: ''") // Empty SpecURL
@@ -101,32 +101,32 @@ func (suite *LoginFormTestSuite) TestServeSwaggerWithLoginHTMLStructure() {
 		Title:   "Structure Test API",
 		SpecURL: "/api/swagger.json",
 	}
-	
+
 	handler := ServeSwaggerWithLogin(config)
 	suite.router.GET("/swagger-login", handler)
-	
+
 	req, err := http.NewRequest("GET", "/swagger-login", nil)
 	require.NoError(suite.T(), err)
-	
+
 	w := httptest.NewRecorder()
 	suite.router.ServeHTTP(w, req)
-	
+
 	body := w.Body.String()
-	
+
 	// Test HTML structure
 	assert.Contains(suite.T(), body, "<!DOCTYPE html>")
 	assert.Contains(suite.T(), body, "<html>")
 	assert.Contains(suite.T(), body, "<head>")
 	assert.Contains(suite.T(), body, "<body>")
 	assert.Contains(suite.T(), body, "</html>")
-	
+
 	// Test login form elements
 	assert.Contains(suite.T(), body, "login-section")
 	assert.Contains(suite.T(), body, "Quick Login")
 	assert.Contains(suite.T(), body, "login-email")
 	assert.Contains(suite.T(), body, "login-password")
 	assert.Contains(suite.T(), body, "performLogin()")
-	
+
 	// Test Swagger UI elements
 	assert.Contains(suite.T(), body, "<div id=\"swagger-ui\">")
 	assert.Contains(suite.T(), body, "swagger-ui-bundle.js")
@@ -139,29 +139,29 @@ func (suite *LoginFormTestSuite) TestServeSwaggerWithLoginJavaScript() {
 		Title:   "JS Test API",
 		SpecURL: "/js/swagger.json",
 	}
-	
+
 	handler := ServeSwaggerWithLogin(config)
 	suite.router.GET("/swagger-login", handler)
-	
+
 	req, err := http.NewRequest("GET", "/swagger-login", nil)
 	require.NoError(suite.T(), err)
-	
+
 	w := httptest.NewRecorder()
 	suite.router.ServeHTTP(w, req)
-	
+
 	body := w.Body.String()
-	
+
 	// Test JavaScript functions
 	assert.Contains(suite.T(), body, "function performLogin()")
 	assert.Contains(suite.T(), body, "function showStatus(")
 	assert.Contains(suite.T(), body, "SwaggerUIBundle")
 	assert.Contains(suite.T(), body, "/api/v1/auth/user/login")
 	assert.Contains(suite.T(), body, "swaggerUI.authActions.authorize")
-	
+
 	// Test JavaScript variables
 	assert.Contains(suite.T(), body, "let swaggerUI")
-	assert.Contains(suite.T(), body, "url: '/js/swagger.json'")
-	
+	assert.Contains(suite.T(), body, "url: '\\/js\\/swagger.json'")
+
 	// Test event handlers
 	assert.Contains(suite.T(), body, "window.onload")
 }
@@ -172,18 +172,18 @@ func (suite *LoginFormTestSuite) TestServeSwaggerWithLoginCSS() {
 		Title:   "CSS Test API",
 		SpecURL: "/css/swagger.json",
 	}
-	
+
 	handler := ServeSwaggerWithLogin(config)
 	suite.router.GET("/swagger-login", handler)
-	
+
 	req, err := http.NewRequest("GET", "/swagger-login", nil)
 	require.NoError(suite.T(), err)
-	
+
 	w := httptest.NewRecorder()
 	suite.router.ServeHTTP(w, req)
-	
+
 	body := w.Body.String()
-	
+
 	// Test CSS classes
 	assert.Contains(suite.T(), body, ".login-section")
 	assert.Contains(suite.T(), body, ".login-form")
@@ -192,7 +192,7 @@ func (suite *LoginFormTestSuite) TestServeSwaggerWithLoginCSS() {
 	assert.Contains(suite.T(), body, ".login-status")
 	assert.Contains(suite.T(), body, ".login-status.success")
 	assert.Contains(suite.T(), body, ".login-status.error")
-	
+
 	// Test CSS styling
 	assert.Contains(suite.T(), body, "background: #f8f9fa")
 	assert.Contains(suite.T(), body, "background: #007bff")
@@ -205,7 +205,7 @@ func (suite *LoginFormTestSuite) TestLoginConfigStruct() {
 		Title:   "Test Title",
 		SpecURL: "Test URL",
 	}
-	
+
 	assert.Equal(suite.T(), "Test Title", config.Title)
 	assert.Equal(suite.T(), "Test URL", config.SpecURL)
 }
@@ -215,19 +215,19 @@ func (suite *LoginFormTestSuite) TestLoginTemplateExecution() {
 	// Test that the template can be parsed and executed without errors
 	tmpl, err := template.New("test").Parse(swaggerWithLoginTemplate)
 	require.NoError(suite.T(), err)
-	
+
 	config := LoginConfig{
 		Title:   "Template Test API",
 		SpecURL: "/template/swagger.json",
 	}
-	
+
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, config)
 	require.NoError(suite.T(), err)
-	
+
 	result := buf.String()
 	assert.Contains(suite.T(), result, "Template Test API")
-	assert.Contains(suite.T(), result, "/template/swagger.json")
+	assert.Contains(suite.T(), result, "\\/template\\/swagger.json")
 }
 
 // Run the test suite
@@ -271,23 +271,23 @@ func TestLoginConfigDefaults(t *testing.T) {
 			description: "Should handle full configuration",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			gin.SetMode(gin.TestMode)
 			router := gin.New()
 			handler := ServeSwaggerWithLogin(tc.inputConfig)
 			router.GET("/test", handler)
-			
+
 			req, err := http.NewRequest("GET", "/test", nil)
 			require.NoError(t, err)
-			
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, http.StatusOK, w.Code, tc.description)
 			assert.NotEmpty(t, w.Body.String(), tc.description)
-			
+
 			body := w.Body.String()
 			if tc.inputConfig.Title != "" {
 				assert.Contains(t, body, tc.inputConfig.Title)
@@ -305,21 +305,21 @@ func TestLoginFormSpecialCharacters(t *testing.T) {
 		Title:   "API & Documentation <test>",
 		SpecURL: "/swagger/doc.json?version=1.0&format=json",
 	}
-	
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := ServeSwaggerWithLogin(config)
 	router.GET("/test", handler)
-	
+
 	req, err := http.NewRequest("GET", "/test", nil)
 	require.NoError(t, err)
-	
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
-	
+
 	// The template should properly escape these characters in HTML
 	assert.Contains(t, body, "API &amp; Documentation &lt;test&gt;")
 	// URLs should be preserved as-is in JavaScript
@@ -331,20 +331,20 @@ func TestLoginFormJavaScriptSyntax(t *testing.T) {
 		Title:   "JavaScript Test",
 		SpecURL: "/test/swagger.json",
 	}
-	
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := ServeSwaggerWithLogin(config)
 	router.GET("/test", handler)
-	
+
 	req, err := http.NewRequest("GET", "/test", nil)
 	require.NoError(t, err)
-	
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	body := w.Body.String()
-	
+
 	// Test for proper JavaScript syntax
 	assert.Contains(t, body, "async function performLogin()")
 	assert.Contains(t, body, "const email = document.getElementById('login-email').value")
@@ -352,7 +352,7 @@ func TestLoginFormJavaScriptSyntax(t *testing.T) {
 	assert.Contains(t, body, "try {")
 	assert.Contains(t, body, "} catch (error) {")
 	assert.Contains(t, body, "await fetch(")
-	
+
 	// Test for proper error handling
 	assert.Contains(t, body, "if (!email || !password)")
 	assert.Contains(t, body, "if (!response.ok)")
@@ -364,20 +364,20 @@ func TestLoginFormInputValidation(t *testing.T) {
 		Title:   "Validation Test",
 		SpecURL: "/validation/swagger.json",
 	}
-	
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := ServeSwaggerWithLogin(config)
 	router.GET("/test", handler)
-	
+
 	req, err := http.NewRequest("GET", "/test", nil)
 	require.NoError(t, err)
-	
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	body := w.Body.String()
-	
+
 	// Test for input validation in JavaScript
 	assert.Contains(t, body, "if (!email || !password)")
 	assert.Contains(t, body, "Username and password are required")
@@ -392,20 +392,20 @@ func TestLoginFormStatusMessages(t *testing.T) {
 		Title:   "Status Test",
 		SpecURL: "/status/swagger.json",
 	}
-	
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := ServeSwaggerWithLogin(config)
 	router.GET("/test", handler)
-	
+
 	req, err := http.NewRequest("GET", "/test", nil)
 	require.NoError(t, err)
-	
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	body := w.Body.String()
-	
+
 	// Test for status message handling
 	assert.Contains(t, body, "function showStatus(message, type)")
 	assert.Contains(t, body, "showStatus('Logging in...', 'info')")
@@ -419,29 +419,29 @@ func TestLoginFormConcurrency(t *testing.T) {
 		Title:   "Concurrency Test",
 		SpecURL: "/concurrency/swagger.json",
 	}
-	
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := ServeSwaggerWithLogin(config)
 	router.GET("/test", handler)
-	
+
 	// Test concurrent requests to ensure no race conditions
 	done := make(chan bool, 5)
 	for i := 0; i < 5; i++ {
 		go func() {
 			defer func() { done <- true }()
-			
+
 			req, err := http.NewRequest("GET", "/test", nil)
 			require.NoError(t, err)
-			
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, http.StatusOK, w.Code)
 			assert.Contains(t, w.Body.String(), "Concurrency Test")
 		}()
 	}
-	
+
 	// Wait for all goroutines to complete
 	for i := 0; i < 5; i++ {
 		<-done
@@ -452,26 +452,26 @@ func TestLoginFormErrorHandling(t *testing.T) {
 	// Test that the function handles errors gracefully
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	// Test with valid config
 	config := LoginConfig{
 		Title:   "Error Test",
 		SpecURL: "/error/test",
 	}
-	
+
 	handler := ServeSwaggerWithLogin(config)
 	router.GET("/test", handler)
-	
+
 	req, err := http.NewRequest("GET", "/test", nil)
 	require.NoError(t, err)
-	
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	// Should not panic and should return valid response
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.NotEmpty(t, w.Body.String())
-	
+
 	body := w.Body.String()
 	// Should contain error handling code
 	assert.Contains(t, body, "try {")
@@ -484,22 +484,22 @@ func TestLoginFormResponseSize(t *testing.T) {
 		Title:   "Size Test API Documentation with Long Title",
 		SpecURL: "/very/long/path/to/swagger/documentation.json",
 	}
-	
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := ServeSwaggerWithLogin(config)
 	router.GET("/test", handler)
-	
+
 	req, err := http.NewRequest("GET", "/test", nil)
 	require.NoError(t, err)
-	
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	// Should return a substantial HTML document
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Greater(t, w.Body.Len(), 1000)
-	
+
 	body := w.Body.String()
 	assert.Contains(t, body, config.Title)
 	assert.Contains(t, body, config.SpecURL)

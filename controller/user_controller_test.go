@@ -169,7 +169,7 @@ func (suite *UserControllerTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.mockService = &MockUserService{}
 	suite.mockLogger = &MockControllerLogger{}
-	
+
 	// Set up comprehensive mock expectations for all logger patterns
 	suite.mockLogger.On("Debug", mock.Anything).Maybe()
 	suite.mockLogger.On("Info", mock.Anything).Maybe()
@@ -178,9 +178,10 @@ func (suite *UserControllerTestSuite) SetupTest() {
 	suite.mockLogger.On("Error", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Debugf", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Infof", mock.Anything, mock.Anything).Maybe()
+	suite.mockLogger.On("Infof", mock.Anything, mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Warnf", mock.Anything, mock.Anything).Maybe()
 	suite.mockLogger.On("Errorf", mock.Anything, mock.Anything).Maybe()
-	
+
 	suite.userController = NewUserController(suite.ctx, suite.mockService, suite.mockLogger, nil)
 	suite.router = gin.New()
 }
@@ -194,11 +195,10 @@ func TestUserControllerTestSuite(t *testing.T) {
 	suite.Run(t, new(UserControllerTestSuite))
 }
 
-
 // TestRegisterLogic tests the Register endpoint logic
 func (suite *UserControllerTestSuite) TestRegisterLogic() {
 	controller := suite.setupController()
-	
+
 	registerReq := models.RegisterUser{
 		Email:     "test@example.com",
 		Username:  "testuser",
@@ -206,7 +206,7 @@ func (suite *UserControllerTestSuite) TestRegisterLogic() {
 		LastName:  "User",
 		Password:  "password123",
 	}
-	
+
 	expectedUser := &models.User{
 		ID:        "user-123",
 		Email:     "test@example.com",
@@ -215,23 +215,23 @@ func (suite *UserControllerTestSuite) TestRegisterLogic() {
 		LastName:  "User",
 		Status:    models.UserStatusActive,
 	}
-	
+
 	suite.mockService.On("CreateUser", mock.MatchedBy(func(user *models.User) bool {
 		return user.Email == "test@example.com" && user.Username == "testuser"
 	})).Return(expectedUser, nil)
-	
+
 	body, _ := json.Marshal(registerReq)
 	req, _ := http.NewRequest(http.MethodPost, "/register", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	controller.Register(c)
-	
+
 	assert.Equal(suite.T(), http.StatusCreated, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -242,18 +242,18 @@ func (suite *UserControllerTestSuite) TestRegisterLogic() {
 // TestRegisterInvalidJSON tests Register with invalid JSON
 func (suite *UserControllerTestSuite) TestRegisterInvalidJSON() {
 	controller := suite.setupController()
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/register", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	controller.Register(c)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -263,7 +263,7 @@ func (suite *UserControllerTestSuite) TestRegisterInvalidJSON() {
 // TestRegisterServiceError tests Register when service returns error
 func (suite *UserControllerTestSuite) TestRegisterServiceError() {
 	controller := suite.setupController()
-	
+
 	registerReq := models.RegisterUser{
 		Email:     "test@example.com",
 		Username:  "testuser",
@@ -271,21 +271,21 @@ func (suite *UserControllerTestSuite) TestRegisterServiceError() {
 		LastName:  "User",
 		Password:  "password123",
 	}
-	
+
 	suite.mockService.On("CreateUser", mock.Anything).Return(nil, errors.New("service error"))
-	
+
 	body, _ := json.Marshal(registerReq)
 	req, _ := http.NewRequest(http.MethodPost, "/register", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	controller.Register(c)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -295,7 +295,7 @@ func (suite *UserControllerTestSuite) TestRegisterServiceError() {
 // TestGetUser tests the GetUser endpoint
 func (suite *UserControllerTestSuite) TestGetUser() {
 	controller := suite.setupController()
-	
+
 	expectedUser := &models.User{
 		ID:        "user-123",
 		Email:     "test@example.com",
@@ -303,19 +303,19 @@ func (suite *UserControllerTestSuite) TestGetUser() {
 		FirstName: "Test",
 		LastName:  "User",
 	}
-	
+
 	suite.mockService.On("GetUserByID", "user-123").Return(expectedUser, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/user/user-123", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = []gin.Param{{Key: "id", Value: "user-123"}}
-	
+
 	controller.GetUser(c)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -326,19 +326,19 @@ func (suite *UserControllerTestSuite) TestGetUser() {
 // TestGetUserNotFound tests GetUser when user not found
 func (suite *UserControllerTestSuite) TestGetUserNotFound() {
 	controller := suite.setupController()
-	
+
 	suite.mockService.On("GetUserByID", "nonexistent").Return(nil, errors.New("user not found"))
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/user/nonexistent", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = []gin.Param{{Key: "id", Value: "nonexistent"}}
-	
+
 	controller.GetUser(c)
-	
+
 	assert.Equal(suite.T(), http.StatusNotFound, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -348,23 +348,23 @@ func (suite *UserControllerTestSuite) TestGetUserNotFound() {
 // TestGetUserList tests the GetUserList endpoint
 func (suite *UserControllerTestSuite) TestGetUserList() {
 	controller := suite.setupController()
-	
+
 	expectedUsers := []*models.User{
 		{ID: "user-1", Email: "user1@example.com"},
 		{ID: "user-2", Email: "user2@example.com"},
 	}
-	
+
 	suite.mockService.On("GetUsers").Return(expectedUsers, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/user/list", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	controller.GetUserList(c)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -375,18 +375,18 @@ func (suite *UserControllerTestSuite) TestGetUserList() {
 // TestGetUserListServiceError tests GetUserList when service returns error
 func (suite *UserControllerTestSuite) TestGetUserListServiceError() {
 	controller := suite.setupController()
-	
+
 	suite.mockService.On("GetUsers").Return(nil, errors.New("service error"))
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/user/list", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	controller.GetUserList(c)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -396,35 +396,35 @@ func (suite *UserControllerTestSuite) TestGetUserListServiceError() {
 // TestUpdateUser tests the UpdateUser endpoint
 func (suite *UserControllerTestSuite) TestUpdateUser() {
 	controller := suite.setupController()
-	
+
 	updateReq := models.User{
 		FirstName: "Updated",
 		LastName:  "Name",
 	}
-	
+
 	expectedUser := &models.User{
 		ID:        "user-123",
 		FirstName: "Updated",
 		LastName:  "Name",
 	}
-	
+
 	suite.mockService.On("UpdateUser", "user-123", mock.MatchedBy(func(user *models.User) bool {
 		return user.FirstName == "Updated" && user.LastName == "Name"
 	})).Return(expectedUser, nil)
-	
+
 	body, _ := json.Marshal(updateReq)
 	req, _ := http.NewRequest(http.MethodPatch, "/user/update/user-123", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = []gin.Param{{Key: "id", Value: "user-123"}}
-	
+
 	controller.UpdateUser(c)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -434,19 +434,19 @@ func (suite *UserControllerTestSuite) TestUpdateUser() {
 // TestUpdateUserInvalidJSON tests UpdateUser with invalid JSON
 func (suite *UserControllerTestSuite) TestUpdateUserInvalidJSON() {
 	controller := suite.setupController()
-	
+
 	req, _ := http.NewRequest(http.MethodPatch, "/user/update/user-123", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = []gin.Param{{Key: "id", Value: "user-123"}}
-	
+
 	controller.UpdateUser(c)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -456,27 +456,27 @@ func (suite *UserControllerTestSuite) TestUpdateUserInvalidJSON() {
 // TestUpdateUserServiceError tests UpdateUser when service returns error
 func (suite *UserControllerTestSuite) TestUpdateUserServiceError() {
 	controller := suite.setupController()
-	
+
 	updateReq := models.User{
 		FirstName: "Updated",
 		LastName:  "Name",
 	}
-	
+
 	suite.mockService.On("UpdateUser", "user-123", mock.Anything).Return(nil, errors.New("service error"))
-	
+
 	body, _ := json.Marshal(updateReq)
 	req, _ := http.NewRequest(http.MethodPatch, "/user/update/user-123", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = []gin.Param{{Key: "id", Value: "user-123"}}
-	
+
 	controller.UpdateUser(c)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -486,16 +486,21 @@ func (suite *UserControllerTestSuite) TestUpdateUserServiceError() {
 // TestAssignRole tests the AssignRole endpoint
 func (suite *UserControllerTestSuite) TestAssignRole() {
 	controller := suite.setupController()
-	
+
+	existingUser := &models.User{
+		ID: "user-123",
+	}
+
 	expectedUser := &models.User{
 		ID: "user-123",
 		Roles: []models.RoleAssignment{
 			{RoleID: "role-456", RoleName: "Admin"},
 		},
 	}
-	
+
+	suite.mockService.On("GetUserByID", "user-123").Return(existingUser, nil)
 	suite.mockService.On("AssignRoleToUser", "user-123", "role-456").Return(expectedUser, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/user/user-123/role/role-456", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -506,11 +511,11 @@ func (suite *UserControllerTestSuite) TestAssignRole() {
 	}
 	// Set user context for invalidateUserPermissions
 	c.Set("user", &models.JWTClaims{UserID: "admin"})
-	
+
 	controller.AssignRole(c)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -520,14 +525,19 @@ func (suite *UserControllerTestSuite) TestAssignRole() {
 // TestDetachRole tests the DetachRole endpoint
 func (suite *UserControllerTestSuite) TestDetachRole() {
 	controller := suite.setupController()
-	
+
+	existingUser := &models.User{
+		ID: "user-123",
+	}
+
 	expectedUser := &models.User{
 		ID:    "user-123",
 		Roles: []models.RoleAssignment{},
 	}
-	
+
+	suite.mockService.On("GetUserByID", "user-123").Return(existingUser, nil)
 	suite.mockService.On("RemoveRoleFromUser", "user-123", "role-456").Return(expectedUser, nil)
-	
+
 	req, _ := http.NewRequest(http.MethodDelete, "/user/user-123/role/role-456", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -538,11 +548,11 @@ func (suite *UserControllerTestSuite) TestDetachRole() {
 	}
 	// Set user context for invalidateUserPermissions
 	c.Set("user", &models.JWTClaims{UserID: "admin"})
-	
+
 	controller.DetachRole(c)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -552,15 +562,15 @@ func (suite *UserControllerTestSuite) TestDetachRole() {
 // TestLoginDelegation tests that Login delegates to JWT manager
 func (suite *UserControllerTestSuite) TestLoginDelegation() {
 	controller := suite.setupController()
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/login", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	// Since jwtManager is nil, this should handle gracefully
 	controller.Login(c)
-	
+
 	// The function delegates to JWT manager, so if manager is nil,
 	// it should not panic but may not process the request
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
@@ -569,15 +579,15 @@ func (suite *UserControllerTestSuite) TestLoginDelegation() {
 // TestGenerateTokenDelegation tests that GenerateToken delegates properly
 func (suite *UserControllerTestSuite) TestGenerateTokenDelegation() {
 	controller := suite.setupController()
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/token", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	// This endpoint delegates to AuthMiddleware processing
 	controller.GenerateToken(c)
-	
+
 	// Since we're testing delegation, we expect this to complete without error
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
 }
@@ -585,15 +595,15 @@ func (suite *UserControllerTestSuite) TestGenerateTokenDelegation() {
 // TestValidateTokenDelegation tests that ValidateToken delegates properly
 func (suite *UserControllerTestSuite) TestValidateTokenDelegation() {
 	controller := suite.setupController()
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/validate", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	// This endpoint delegates to JWT manager processing
 	controller.ValidateToken(c)
-	
+
 	// Since we're testing delegation, we expect this to complete without error
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
 }
@@ -601,18 +611,18 @@ func (suite *UserControllerTestSuite) TestValidateTokenDelegation() {
 // TestLogout tests the Logout endpoint
 func (suite *UserControllerTestSuite) TestLogout() {
 	controller := suite.setupController()
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/logout", nil)
 	req.Header.Set("Authorization", "Bearer valid-token")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	
+
 	controller.Logout(c)
-	
+
 	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -625,17 +635,17 @@ func (suite *UserControllerTestSuite) TestLogout() {
 // TestGetUserWithEmptyID tests GetUser with empty ID parameter
 func (suite *UserControllerTestSuite) TestGetUserWithEmptyID() {
 	controller := suite.setupController()
-	
+
 	req, _ := http.NewRequest(http.MethodGet, "/user/", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = []gin.Param{{Key: "id", Value: ""}}
-	
+
 	controller.GetUser(c)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -645,22 +655,22 @@ func (suite *UserControllerTestSuite) TestGetUserWithEmptyID() {
 // TestUpdateUserWithEmptyID tests UpdateUser with empty ID parameter
 func (suite *UserControllerTestSuite) TestUpdateUserWithEmptyID() {
 	controller := suite.setupController()
-	
+
 	updateReq := models.User{FirstName: "Test"}
 	body, _ := json.Marshal(updateReq)
-	
+
 	req, _ := http.NewRequest(http.MethodPatch, "/user/update/", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = []gin.Param{{Key: "id", Value: ""}}
-	
+
 	controller.UpdateUser(c)
-	
+
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
@@ -670,9 +680,14 @@ func (suite *UserControllerTestSuite) TestUpdateUserWithEmptyID() {
 // TestAssignRoleServiceError tests AssignRole when service returns error
 func (suite *UserControllerTestSuite) TestAssignRoleServiceError() {
 	controller := suite.setupController()
-	
+
+	existingUser := &models.User{
+		ID: "user-123",
+	}
+
+	suite.mockService.On("GetUserByID", "user-123").Return(existingUser, nil)
 	suite.mockService.On("AssignRoleToUser", "user-123", "role-456").Return(nil, errors.New("service error"))
-	
+
 	req, _ := http.NewRequest(http.MethodPost, "/user/user-123/role/role-456", nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -682,11 +697,11 @@ func (suite *UserControllerTestSuite) TestAssignRoleServiceError() {
 		{Key: "role_id", Value: "role-456"},
 	}
 	c.Set("user", &models.JWTClaims{UserID: "admin"})
-	
+
 	controller.AssignRole(c)
-	
+
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
-	
+
 	var response models.APIResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)

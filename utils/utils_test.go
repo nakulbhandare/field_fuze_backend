@@ -35,7 +35,7 @@ func (suite *UtilsTestSuite) SetupTest() {
 		"CORS_ORIGINS", "RATE_LIMIT_REQUESTS_PER_MINUTE",
 		"BASEPATH",
 	}
-	
+
 	for _, envVar := range envVars {
 		suite.originalEnv[envVar] = os.Getenv(envVar)
 		os.Unsetenv(envVar)
@@ -59,7 +59,7 @@ func (suite *UtilsTestSuite) TestGetConfig() {
 	config, err := GetConfig()
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), config)
-	
+
 	// Test default values
 	assert.Equal(suite.T(), "FieldFuze Backend", config.AppName)
 	assert.Equal(suite.T(), "1.0.0", config.AppVersion)
@@ -76,11 +76,11 @@ func (suite *UtilsTestSuite) TestGetConfigWithEnvironmentVariables() {
 	os.Setenv("APP_ENV", "production")
 	os.Setenv("JWT_SECRET", "production-secret")
 	os.Setenv("AWS_REGION", "us-west-2")
-	
+
 	config, err := GetConfig()
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), config)
-	
+
 	// Test environment variable overrides
 	assert.Equal(suite.T(), "Test App", config.AppName)
 	assert.Equal(suite.T(), "2.0.0", config.AppVersion)
@@ -94,28 +94,28 @@ func (suite *UtilsTestSuite) TestLoad() {
 	config, err := Load()
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), config)
-	
+
 	// Verify config file values (config.json overrides defaults)
 	assert.Equal(suite.T(), "FieldFuze Backend", config.AppName)
 	assert.Equal(suite.T(), "1.0.0", config.AppVersion)
 	assert.Equal(suite.T(), "development", config.AppEnv)
 	assert.Equal(suite.T(), "0.0.0.0", config.AppHost)
 	assert.Equal(suite.T(), "8081", config.AppPort)
-	assert.Equal(suite.T(), "your-super-secret-jwt-key-change-this-in-production", config.JWTSecret)
+	assert.Equal(suite.T(), "UkPd0+RXTNFqjN8vSUJP2u97Vm6CD1aaVenZ0PkWhtTxu1ZPFgwO4ziTNFX5H2DNiIjcpdqBWAGZ6fJ2quZeJA==", config.JWTSecret)
 	assert.Equal(suite.T(), 24*time.Hour, config.JWTExpiresIn) // From config.json: "24h"
 	assert.Equal(suite.T(), "us-east-1", config.AWSRegion)
 	assert.Equal(suite.T(), "debug", config.LogLevel) // From config.json: "debug"
 	assert.Equal(suite.T(), "text", config.LogFormat) // From config.json: "text"
 	assert.Equal(suite.T(), []string{"*"}, config.CORSOrigins)
 	assert.Equal(suite.T(), 100, config.RateLimitRequestsPerMinute)
-	assert.Equal(suite.T(), "/api/v1/auth", config.BasePath) // From config.json: "/api/v1/auth"
+	assert.Equal(suite.T(), "/api/v1/auth", config.BasePath)                           // From config.json: "/api/v1/auth"
 	assert.Equal(suite.T(), []string{"users1", "role", "organization"}, config.Tables) // From config.json
 }
 
 // TestLoadWithJWTExpirationString tests JWT expiration parsing
 func (suite *UtilsTestSuite) TestLoadWithJWTExpirationString() {
 	os.Setenv("JWT_EXPIRES_IN", "24h")
-	
+
 	config, err := Load()
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 24*time.Hour, config.JWTExpiresIn)
@@ -124,7 +124,7 @@ func (suite *UtilsTestSuite) TestLoadWithJWTExpirationString() {
 // TestLoadWithInvalidJWTExpiration tests invalid JWT expiration
 func (suite *UtilsTestSuite) TestLoadWithInvalidJWTExpiration() {
 	os.Setenv("JWT_EXPIRES_IN", "invalid-duration")
-	
+
 	config, err := Load()
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), config)
@@ -135,8 +135,8 @@ func (suite *UtilsTestSuite) TestLoadWithInvalidJWTExpiration() {
 // TestLoadWithProductionValidation tests production environment validation
 func (suite *UtilsTestSuite) TestLoadWithProductionValidation() {
 	os.Setenv("APP_ENV", "production")
-	// Don't set JWT_SECRET, should use default which should fail validation
-	
+	os.Setenv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production")
+
 	config, err := Load()
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), config)
@@ -147,7 +147,7 @@ func (suite *UtilsTestSuite) TestLoadWithProductionValidation() {
 func (suite *UtilsTestSuite) TestLoadWithProductionValidationWithValidSecret() {
 	os.Setenv("APP_ENV", "production")
 	os.Setenv("JWT_SECRET", "production-secret-key")
-	
+
 	config, err := Load()
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), config)
@@ -190,9 +190,9 @@ func (suite *UtilsTestSuite) TestValidateProductionWithValidSecret() {
 // TestValidateProductionWithNoAWSCredentials tests production without AWS credentials
 func (suite *UtilsTestSuite) TestValidateProductionWithNoAWSCredentials() {
 	config := &models.Config{
-		AppEnv:          "production",
-		JWTSecret:       "production-secret",
-		AWSAccessKeyID:  "",
+		AppEnv:         "production",
+		JWTSecret:      "production-secret",
+		AWSAccessKeyID: "",
 	}
 	err := validate(config)
 	assert.NoError(suite.T(), err) // Should not error, just print warning
@@ -205,10 +205,10 @@ func (suite *UtilsTestSuite) TestPrintPrettyJSON() {
 		"value": 123,
 		"array": []string{"a", "b", "c"},
 	}
-	
+
 	result := PrintPrettyJSON(data)
 	assert.NotEmpty(suite.T(), result)
-	
+
 	// Verify it's valid JSON
 	var parsed map[string]interface{}
 	err := json.Unmarshal([]byte(result), &parsed)
@@ -229,7 +229,7 @@ func (suite *UtilsTestSuite) TestPrintPrettyJSONWithStruct() {
 		Name  string `json:"name"`
 		Value int    `json:"value"`
 	}
-	
+
 	data := TestStruct{Name: "test", Value: 42}
 	result := PrintPrettyJSON(data)
 	assert.NotEmpty(suite.T(), result)
@@ -250,15 +250,15 @@ func (suite *UtilsTestSuite) TestGenerateUUID() {
 	// Test basic generation
 	id1 := GenerateUUID()
 	id2 := GenerateUUID()
-	
+
 	assert.NotEmpty(suite.T(), id1)
 	assert.NotEmpty(suite.T(), id2)
 	assert.NotEqual(suite.T(), id1, id2)
-	
+
 	// Test UUID format
 	_, err := uuid.Parse(id1)
 	assert.NoError(suite.T(), err)
-	
+
 	_, err = uuid.Parse(id2)
 	assert.NoError(suite.T(), err)
 }
@@ -276,12 +276,12 @@ func (suite *UtilsTestSuite) TestGenerateUUIDUniqueness() {
 // TestHashPassword tests the HashPassword function
 func (suite *UtilsTestSuite) TestHashPassword() {
 	password := "testpassword123"
-	
+
 	hash1, err := HashPassword(password)
 	assert.NoError(suite.T(), err)
 	assert.NotEmpty(suite.T(), hash1)
 	assert.NotEqual(suite.T(), password, hash1)
-	
+
 	// Generate another hash for the same password
 	hash2, err := HashPassword(password)
 	assert.NoError(suite.T(), err)
@@ -305,7 +305,7 @@ func (suite *UtilsTestSuite) TestHashPasswordWithSpecialCharacters() {
 		"密码",
 		"مرور",
 	}
-	
+
 	for _, password := range passwords {
 		hash, err := HashPassword(password)
 		assert.NoError(suite.T(), err, "Failed to hash password: %s", password)
@@ -317,13 +317,13 @@ func (suite *UtilsTestSuite) TestHashPasswordWithSpecialCharacters() {
 // TestCheckPassword tests the CheckPassword function
 func (suite *UtilsTestSuite) TestCheckPassword() {
 	password := "testpassword123"
-	
+
 	hash, err := HashPassword(password)
 	require.NoError(suite.T(), err)
-	
+
 	// Test correct password
 	assert.True(suite.T(), CheckPassword(hash, password))
-	
+
 	// Test incorrect password
 	assert.False(suite.T(), CheckPassword(hash, "wrongpassword"))
 	assert.False(suite.T(), CheckPassword(hash, ""))
@@ -341,7 +341,7 @@ func (suite *UtilsTestSuite) TestCheckPasswordWithInvalidHash() {
 func (suite *UtilsTestSuite) TestCheckPasswordWithEmptyInputs() {
 	hash, err := HashPassword("password")
 	require.NoError(suite.T(), err)
-	
+
 	assert.False(suite.T(), CheckPassword(hash, ""))
 	assert.False(suite.T(), CheckPassword("", "password"))
 	assert.False(suite.T(), CheckPassword("", ""))
@@ -350,11 +350,11 @@ func (suite *UtilsTestSuite) TestCheckPasswordWithEmptyInputs() {
 // TestCheckPasswordWithBcryptGenerated tests CheckPassword with bcrypt-generated hash
 func (suite *UtilsTestSuite) TestCheckPasswordWithBcryptGenerated() {
 	password := "testpassword"
-	
+
 	// Generate hash using bcrypt directly
 	directHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	require.NoError(suite.T(), err)
-	
+
 	// Test with our CheckPassword function
 	assert.True(suite.T(), CheckPassword(string(directHash), password))
 	assert.False(suite.T(), CheckPassword(string(directHash), "wrongpassword"))
@@ -377,7 +377,7 @@ func TestHashPasswordEdgeCases(t *testing.T) {
 		{"Unicode password", "test🔐password"},
 		{"Password with null bytes", "test\x00password"},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			hash, err := HashPassword(tc.password)
@@ -390,11 +390,11 @@ func TestHashPasswordEdgeCases(t *testing.T) {
 
 func TestPasswordConsistency(t *testing.T) {
 	password := "consistencytest"
-	
+
 	// Generate hash
 	hash, err := HashPassword(password)
 	require.NoError(t, err)
-	
+
 	// Test multiple times to ensure consistency
 	for i := 0; i < 10; i++ {
 		assert.True(t, CheckPassword(hash, password), "Password check failed on iteration %d", i)
@@ -404,18 +404,18 @@ func TestPasswordConsistency(t *testing.T) {
 func TestUUIDFormatValidation(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		id := GenerateUUID()
-		
+
 		// Check UUID format (should be 36 characters with dashes)
 		assert.Len(t, id, 36)
 		assert.Contains(t, id, "-")
-		
+
 		// Should contain only hex characters and dashes
 		for _, char := range id {
-			assert.True(t, 
+			assert.True(t,
 				(char >= '0' && char <= '9') ||
-				(char >= 'a' && char <= 'f') ||
-				(char >= 'A' && char <= 'F') ||
-				char == '-',
+					(char >= 'a' && char <= 'f') ||
+					(char >= 'A' && char <= 'F') ||
+					char == '-',
 				"Invalid character in UUID: %c", char)
 		}
 	}
@@ -460,7 +460,7 @@ func TestConfigValidationEdgeCases(t *testing.T) {
 			shouldError: false,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validate(tc.config)

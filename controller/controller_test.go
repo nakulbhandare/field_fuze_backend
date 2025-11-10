@@ -44,10 +44,10 @@ func TestControllerTestSuite(t *testing.T) {
 func (suite *ControllerTestSuite) TestNewControllerStructure() {
 	// This test validates that the NewController function doesn't panic during basic initialization
 	// In a real scenario, this would require proper database setup
-	
+
 	// We can't actually call NewController here because it requires valid database connections
 	// Instead, we'll test the controller structure directly
-	
+
 	// Create a mock controller to verify the structure
 	controller := &Controller{
 		User:           nil, // Would be populated by NewController
@@ -55,15 +55,15 @@ func (suite *ControllerTestSuite) TestNewControllerStructure() {
 		Infrastructure: nil, // Would be populated by NewController
 		Organization:   nil, // Would be populated by NewController
 	}
-	
+
 	assert.NotNil(suite.T(), controller)
-	
+
 	// Test that we can set the controllers
 	controller.User = &UserController{}
 	controller.Role = &RoleController{}
 	controller.Infrastructure = &InfrastructureController{}
 	controller.Organization = &OrganizationController{}
-	
+
 	assert.NotNil(suite.T(), controller.User)
 	assert.NotNil(suite.T(), controller.Role)
 	assert.NotNil(suite.T(), controller.Infrastructure)
@@ -73,7 +73,7 @@ func (suite *ControllerTestSuite) TestNewControllerStructure() {
 // TestRegisterRoutesBasicSetup tests basic route registration setup
 func (suite *ControllerTestSuite) TestRegisterRoutesBasicSetup() {
 	gin.SetMode(gin.TestMode)
-	
+
 	// Create a minimal controller setup for testing route structure
 	controller := &Controller{
 		User:           &UserController{},
@@ -81,14 +81,14 @@ func (suite *ControllerTestSuite) TestRegisterRoutesBasicSetup() {
 		Infrastructure: &InfrastructureController{},
 		Organization:   &OrganizationController{},
 	}
-	
+
 	// Test that the controller struct is properly initialized
 	assert.NotNil(suite.T(), controller)
 	assert.NotNil(suite.T(), controller.User)
 	assert.NotNil(suite.T(), controller.Role)
 	assert.NotNil(suite.T(), controller.Infrastructure)
 	assert.NotNil(suite.T(), controller.Organization)
-	
+
 	// We can't test RegisterRoutes directly because it starts an HTTP server
 	// and requires valid database connections, but we can verify the structure
 }
@@ -97,12 +97,12 @@ func (suite *ControllerTestSuite) TestRegisterRoutesBasicSetup() {
 func (suite *ControllerTestSuite) TestControllerComponentInitialization() {
 	// Test individual controller creation functions
 	// Note: These would normally require valid service dependencies
-	
+
 	// Test that controller constructor functions exist and have expected signatures
 	assert.NotPanics(suite.T(), func() {
 		// We can't actually call these without proper dependencies,
 		// but we can verify they don't panic with nil checks
-		
+
 		// Verify UserController structure
 		userController := &UserController{
 			ctx:         suite.ctx,
@@ -111,7 +111,7 @@ func (suite *ControllerTestSuite) TestControllerComponentInitialization() {
 			jwtManager:  nil, // Would need actual JWT manager
 		}
 		assert.NotNil(suite.T(), userController)
-		
+
 		// Verify RoleController structure
 		roleController := &RoleController{
 			ctx:         suite.ctx,
@@ -119,7 +119,7 @@ func (suite *ControllerTestSuite) TestControllerComponentInitialization() {
 			logger:      suite.logger,
 		}
 		assert.NotNil(suite.T(), roleController)
-		
+
 		// Verify InfrastructureController structure
 		infraController := &InfrastructureController{
 			ctx:     suite.ctx,
@@ -127,7 +127,7 @@ func (suite *ControllerTestSuite) TestControllerComponentInitialization() {
 			logger:  suite.logger,
 		}
 		assert.NotNil(suite.T(), infraController)
-		
+
 		// Verify OrganizationController structure
 		orgController := &OrganizationController{
 			ctx:                 suite.ctx,
@@ -147,7 +147,7 @@ func (suite *ControllerTestSuite) TestHealthEndpointResponse() {
 		"version": "1.0.0",
 		"service": "FieldFuze Backend",
 	}
-	
+
 	assert.Equal(suite.T(), "healthy", expectedResponse["status"])
 	assert.Equal(suite.T(), "1.0.0", expectedResponse["version"])
 	assert.Equal(suite.T(), "FieldFuze Backend", expectedResponse["service"])
@@ -161,7 +161,7 @@ func (suite *ControllerTestSuite) TestSwaggerConfigSetup() {
 		"SwaggerDocURL": "/swagger/doc.json",
 		"AuthURL":       "/api/v1/auth/user/login",
 	}
-	
+
 	assert.Equal(suite.T(), "FieldFuze Backend API", expectedConfig["Title"])
 	assert.Equal(suite.T(), "/swagger/doc.json", expectedConfig["SwaggerDocURL"])
 	assert.Equal(suite.T(), "/api/v1/auth/user/login", expectedConfig["AuthURL"])
@@ -171,18 +171,18 @@ func (suite *ControllerTestSuite) TestSwaggerConfigSetup() {
 func (suite *ControllerTestSuite) TestRoutePathConstants() {
 	// Test that expected route paths are correctly structured
 	basePath := "/api/v1/auth"
-	
+
 	expectedPaths := map[string]string{
-		"health":           "/health",
-		"swagger":          "/swagger",
-		"user_register":    basePath + "/user/register",
-		"user_login":       basePath + "/user/login",
-		"user_list":        basePath + "/user/list",
-		"role_create":      basePath + "/user/role",
-		"infra_status":     basePath + "/infrastructure/worker/status",
-		"org_create":       basePath + "/organization",
+		"health":        "/health",
+		"swagger":       "/swagger",
+		"user_register": basePath + "/user/register",
+		"user_login":    basePath + "/user/login",
+		"user_list":     basePath + "/user/list",
+		"role_create":   basePath + "/user/role",
+		"infra_status":  basePath + "/infrastructure/worker/status",
+		"org_create":    basePath + "/organization",
 	}
-	
+
 	// Verify expected path structures
 	assert.Contains(suite.T(), expectedPaths["user_register"], "/user/register")
 	assert.Contains(suite.T(), expectedPaths["user_login"], "/user/login")
@@ -194,7 +194,7 @@ func (suite *ControllerTestSuite) TestRoutePathConstants() {
 func (suite *ControllerTestSuite) TestMiddlewareConfiguration() {
 	// Test expected middleware configuration
 	// These are the middlewares that should be configured in RegisterRoutes
-	
+
 	expectedMiddlewares := []string{
 		"CORS",
 		"StructuredLogger",
@@ -203,7 +203,7 @@ func (suite *ControllerTestSuite) TestMiddlewareConfiguration() {
 		"RequirePermission",
 		"RequireResourcePermission",
 	}
-	
+
 	// Verify we have identified all expected middleware types
 	assert.Len(suite.T(), expectedMiddlewares, 6)
 	assert.Contains(suite.T(), expectedMiddlewares, "CORS")

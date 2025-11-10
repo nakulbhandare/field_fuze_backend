@@ -288,8 +288,8 @@ func TestSwaggerConfigDefaults(t *testing.T) {
 			name:           "Empty config uses all defaults",
 			inputConfig:    SwaggerConfig{},
 			expectedTitle:  "API Documentation",
-			expectedDocURL: "/swagger/doc.json",
-			expectedAuth:   "/api/v1/auth/user/login",
+			expectedDocURL: "\\/swagger\\/doc.json",
+			expectedAuth:   "\\/api\\/v1\\/auth\\/user\\/login",
 		},
 		{
 			name: "Partial config uses some defaults",
@@ -297,8 +297,8 @@ func TestSwaggerConfigDefaults(t *testing.T) {
 				Title: "Custom Title",
 			},
 			expectedTitle:  "Custom Title",
-			expectedDocURL: "/swagger/doc.json",
-			expectedAuth:   "/api/v1/auth/user/login",
+			expectedDocURL: "\\/swagger\\/doc.json",
+			expectedAuth:   "\\/api\\/v1\\/auth\\/user\\/login",
 		},
 		{
 			name: "Full config uses no defaults",
@@ -308,8 +308,8 @@ func TestSwaggerConfigDefaults(t *testing.T) {
 				AuthURL:       "/custom/auth",
 			},
 			expectedTitle:  "Custom Title",
-			expectedDocURL: "/custom/doc.json",
-			expectedAuth:   "/custom/auth",
+			expectedDocURL: "\\/custom\\/doc.json",
+			expectedAuth:   "\\/custom\\/auth",
 		},
 	}
 
@@ -360,9 +360,9 @@ func TestSwaggerUISpecialCharacters(t *testing.T) {
 
 	// The template should properly escape these characters
 	assert.Contains(t, body, "API &amp; Documentation &lt;test&gt;")
-	// URLs should be preserved as-is in JavaScript
-	assert.Contains(t, body, "/swagger/doc.json?version=1.0&format=json")
-	assert.Contains(t, body, "/api/v1/auth/user/login?redirect=/home")
+	// URLs should be escaped in JavaScript with proper escaping
+	assert.Contains(t, body, "'\\/swagger\\/doc.json?version\\\\u003D1.0\\\\u0026format\\\\u003Djson'")
+	assert.Contains(t, body, "\"\\/api\\/v1\\/auth\\/user\\/login?redirect\\\\u003D\\/home\"")
 }
 
 func TestSwaggerUIJavaScriptContent(t *testing.T) {
@@ -386,8 +386,8 @@ func TestSwaggerUIJavaScriptContent(t *testing.T) {
 	body := w.Body.String()
 
 	// Test JavaScript functions and variables
-	assert.Contains(t, body, "window.AUTH_URL = \"/test/auth\"")
-	assert.Contains(t, body, "url: '/test/swagger.json'")
+	assert.Contains(t, body, "window.AUTH_URL = \"\\/test\\/auth\"")
+	assert.Contains(t, body, "\\/test\\/swagger.json")
 	assert.Contains(t, body, "SwaggerUIBundle")
 	assert.Contains(t, body, "performAuthentication")
 	assert.Contains(t, body, "startAuthDialogMonitoring")
@@ -420,7 +420,7 @@ func TestCleanSwaggerUIContent(t *testing.T) {
 
 	// Test JavaScript functions specific to clean version
 	assert.Contains(t, body, "window.AUTH_URL = '\\/clean\\/auth'") // Escaped slashes
-	assert.Contains(t, body, "url: '\\/clean\\/swagger.json'") // Escaped slashes
+	assert.Contains(t, body, "url: '\\/clean\\/swagger.json'")      // Escaped slashes
 	assert.Contains(t, body, "attachAuthorizeButtonListener")
 	assert.Contains(t, body, "addLoginForm")
 	assert.Contains(t, body, "createAuthContainer")

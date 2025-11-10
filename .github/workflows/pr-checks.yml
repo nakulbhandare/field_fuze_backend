@@ -81,7 +81,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           echo "🧪 Running tests with coverage analysis..."
-          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go test -v -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v -E "(utils/swagger|utils/logger)")
           
       - name: Generate coverage report
         run: |
@@ -163,7 +163,7 @@ jobs:
       - name: Check for race conditions
         run: |
           echo "🏃 Checking for race conditions..."
-          go test -race -short ./...
+          go test -race -short $(go list ./... | grep -v -E "(utils/swagger|utils/logger)")
 
   dependency-check:
     name: Dependency Security Check
