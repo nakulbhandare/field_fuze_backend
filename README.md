@@ -5,6 +5,12 @@
 [![Gin Framework](https://img.shields.io/badge/Framework-Gin-green.svg)](https://github.com/gin-gonic/gin)
 [![DynamoDB](https://img.shields.io/badge/Database-DynamoDB-orange.svg)](https://aws.amazon.com/dynamodb/)
 
+[![Build Status](https://github.com/nakulbhandare/field_fuze_backend/actions/workflows/deploy-ec2.yml/badge.svg)](https://github.com/nakulbhandare/field_fuze_backend/actions/workflows/deploy-ec2.yml)
+[![PR Checks](https://github.com/nakulbhandare/field_fuze_backend/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/nakulbhandare/field_fuze_backend/actions/workflows/pr-checks.yml)
+[![Coverage](https://img.shields.io/badge/coverage-%3E0%25-brightgreen)](https://github.com/nakulbhandare/field_fuze_backend/actions/workflows/pr-checks.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nakulbhandare/field_fuze_backend)](https://goreportcard.com/report/github.com/nakulbhandare/field_fuze_backend)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A robust, scalable backend API built with Go, Gin framework, and AWS DynamoDB. Features comprehensive user management, role-based access control, infrastructure automation, and real-time monitoring.
 
 ## 🚀 Quick Start
