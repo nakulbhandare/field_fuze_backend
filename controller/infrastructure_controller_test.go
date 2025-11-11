@@ -483,6 +483,16 @@ func (suite *InfrastructureControllerTestSuite) TestMapWorkerStatusToHTTP() {
 			expectedStatus:  "retrying",
 		},
 		{
+			name:            "Deleting failed",
+			executionResult: &models.ExecutionResult{Status: models.StatusDeletionFailed, Success: false},
+			expectedCode:    http.StatusServiceUnavailable,
+			expectedStatus:  "deletion_failed",
+		}, {
+			name:            "Deleted",
+			executionResult: &models.ExecutionResult{Status: models.StatusDeleted, Success: false},
+			expectedCode:    http.StatusOK,
+			expectedStatus:  "deleted",
+		}, {
 			name:            "Deleting",
 			executionResult: &models.ExecutionResult{Status: models.StatusDeleting, Success: false},
 			expectedCode:    http.StatusAccepted,
@@ -527,9 +537,59 @@ func (suite *InfrastructureControllerTestSuite) TestGetStatusMessage() {
 			expectedMessage: "Infrastructure setup is running",
 		},
 		{
-			name:            "Creating Tables",
-			executionResult: &models.ExecutionResult{Status: models.StatusCreatingTables, Success: false},
-			expectedMessage: "Creating DynamoDB tables",
+			name:            "Waiting For Tables",
+			executionResult: &models.ExecutionResult{Status: models.StatusWaitingForTables, Success: false},
+			expectedMessage: "Waiting for DynamoDB tables to become active",
+		},
+		{
+			name:            "Creating Indexes",
+			executionResult: &models.ExecutionResult{Status: models.StatusCreatingIndexes, Success: false},
+			expectedMessage: "Creating database indexes",
+		},
+		{
+			name:            "Waiting For Indexes",
+			executionResult: &models.ExecutionResult{Status: models.StatusWaitingForIndexes, Success: false},
+			expectedMessage: "Waiting for database indexes to become ready",
+		},
+		{
+			name:            "Validating",
+			executionResult: &models.ExecutionResult{Status: models.StatusValidating, Success: false},
+			expectedMessage: "Validating infrastructure configuration",
+		},
+		{
+			name:            "Fixing Issues",
+			executionResult: &models.ExecutionResult{Status: models.StatusFixingIssues, Success: false},
+			expectedMessage: "Fixing detected infrastructure issues",
+		},
+		{
+			name:            "Revalidating",
+			executionResult: &models.ExecutionResult{Status: models.StatusRevalidating, Success: false},
+			expectedMessage: "Re-validating infrastructure after fixes",
+		},
+		{
+			name:            "Initializing",
+			executionResult: &models.ExecutionResult{Status: models.StatusInitializing, Success: false},
+			expectedMessage: "Initializing infrastructure worker",
+		},
+		{
+			name:            "Deleting",
+			executionResult: &models.ExecutionResult{Status: models.StatusDeleting, Success: false},
+			expectedMessage: "Deleting infrastructure resources",
+		},
+		{
+			name:            "Deletion Scheduled",
+			executionResult: &models.ExecutionResult{Status: models.StatusDeletionScheduled, Success: false},
+			expectedMessage: "Infrastructure deletion has been scheduled",
+		},
+		{
+			name:            "Deleted",
+			executionResult: &models.ExecutionResult{Status: models.StatusDeleted, Success: false},
+			expectedMessage: "Infrastructure has been successfully deleted",
+		},
+		{
+			name:            "Deletion Failed",
+			executionResult: &models.ExecutionResult{Status: models.StatusDeletionFailed, Success: false},
+			expectedMessage: "Infrastructure deletion failed",
 		},
 		{
 			name: "Retrying with Count",
