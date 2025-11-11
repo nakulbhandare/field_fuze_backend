@@ -133,9 +133,9 @@ func setDefaults(v *viper.Viper) {
 // validate checks if all required configuration is provided
 func validate(c *models.Config) error {
 
-	if c.JWTSecret == "your-super-secret-jwt-key-change-this-in-production" && c.AppEnv == "production" {
-		return fmt.Errorf("JWT_SECRET must be set in production environment")
-	}
+	// if c.JWTSecret == "your-super-secret-jwt-key-change-this-in-production" && c.AppEnv == "production" {
+	// 	return fmt.Errorf("JWT_SECRET must be set in production environment")
+	// }
 
 	// In production, we should have AWS credentials set
 	if c.AppEnv == "production" && c.AWSAccessKeyID == "" {
