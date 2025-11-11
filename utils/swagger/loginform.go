@@ -98,7 +98,7 @@ const swaggerWithLoginTemplate = `<!DOCTYPE html>
 
         window.onload = function() {
             swaggerUI = SwaggerUIBundle({
-                url: '{{.SpecURL}}',
+                url: '{{js .SpecURL}}',
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [

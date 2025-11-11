@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"fieldfuze-backend/utils/logger"
 
@@ -32,8 +33,10 @@ func NewUserController(ctx context.Context, userService services.UserServiceInte
 
 // invalidateUserPermissions clears permission cache and logs security events
 func (h *UserController) invalidateUserPermissions(userID, operation string) {
-	// Clear permission cache through JWT manager
-	h.jwtManager.ClearPermissionCache()
+	// Clear permission cache through JWT manager if available
+	if h.jwtManager != nil {
+		h.jwtManager.ClearPermissionCache()
+	}
 
 	// Log security event for audit trail
 	h.logger.Infof("SECURITY EVENT: Permission cache cleared for user %s due to %s", userID, operation)
@@ -106,18 +109,45 @@ func (h *UserController) Register(c *gin.Context) {
 func (h *UserController) GetUser(c *gin.Context) {
 	userID := c.Param("id")
 
-	user, err := h.userService.GetUserByID(userID)
-	if err != nil {
-		h.logger.Error("Failed to get user by ID", fmt.Errorf("error: %v", err))
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+	if userID == "" {
+		h.logger.Warn("Empty user ID provided")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Status:  "error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to get user by ID",
+			Code:    http.StatusBadRequest,
+			Message: "User ID is required",
 			Error: &models.APIError{
-				Type:    "DatabaseError",
-				Details: err.Error(),
+				Type:    "ValidationError",
+				Details: "User ID cannot be empty",
 			},
 		})
+		return
+	}
+
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			h.logger.Warn("User not found", fmt.Errorf("error: %v", err))
+			c.JSON(http.StatusNotFound, models.APIResponse{
+				Status:  "error",
+				Code:    http.StatusNotFound,
+				Message: "User not found",
+				Error: &models.APIError{
+					Type:    "NotFound",
+					Details: err.Error(),
+				},
+			})
+		} else {
+			h.logger.Error("Failed to get user by ID", fmt.Errorf("error: %v", err))
+			c.JSON(http.StatusInternalServerError, models.APIResponse{
+				Status:  "error",
+				Code:    http.StatusInternalServerError,
+				Message: "Failed to get user by ID",
+				Error: &models.APIError{
+					Type:    "DatabaseError",
+					Details: err.Error(),
+				},
+			})
+		}
 		return
 	}
 
@@ -318,6 +348,19 @@ type LoginRequest struct {
 // @Router /user/login [post]
 func (h *UserController) Login(c *gin.Context) {
 	// Delegate to the JWT manager's login authentication handler
+	if h.jwtManager == nil {
+		h.logger.Error("JWT manager not initialized")
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Authentication service not available",
+			Error: &models.APIError{
+				Type:    "ServiceError",
+				Details: "JWT manager not initialized",
+			},
+		})
+		return
+	}
 	h.jwtManager.HandleLogin(c)
 }
 
@@ -383,7 +426,9 @@ func (h *UserController) Logout(c *gin.Context) {
 	}
 
 	// Revoke the current token (both blacklist and remove from active tokens)
-	h.jwtManager.RevokeUserToken(jwtClaims.UserID, jwtClaims.ID, jwtClaims.ExpiresAt.Time)
+	if h.jwtManager != nil {
+		h.jwtManager.RevokeUserToken(jwtClaims.UserID, jwtClaims.ID, jwtClaims.ExpiresAt.Time)
+	}
 
 	h.logger.Debugf("User %s logged out successfully", jwtClaims.UserID)
 
@@ -411,6 +456,19 @@ func (h *UserController) Logout(c *gin.Context) {
 // @Router       /user/validate [post]
 func (h *UserController) ValidateToken(c *gin.Context) {
 	// Delegate to JWT middleware which handles the complete token validation flow
+	if h.jwtManager == nil {
+		h.logger.Error("JWT manager not initialized")
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Status:  "error",
+			Code:    http.StatusInternalServerError,
+			Message: "Authentication service not available",
+			Error: &models.APIError{
+				Type:    "ServiceError",
+				Details: "JWT manager not initialized",
+			},
+		})
+		return
+	}
 	h.jwtManager.ValidateTokenEndpoint(c)
 }
 
