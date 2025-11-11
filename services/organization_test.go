@@ -631,10 +631,6 @@ func (suite *OrganizationServiceTestSuite) TestPhoneValidation() {
 
 // TestConcurrentAccess tests concurrent access to organization service
 func (suite *OrganizationServiceTestSuite) TestConcurrentAccess() {
-	organization := &models.Organization{
-		Name: "Concurrent Corp",
-	}
-
 	expectedOrg := &models.Organization{
 		Name:      "Concurrent Corp",
 		CreatedBy: "admin",
@@ -648,13 +644,19 @@ func (suite *OrganizationServiceTestSuite) TestConcurrentAccess() {
 
 	// Start two goroutines to create organizations concurrently
 	go func() {
-		_, err := suite.orgService.CreateOrganization(suite.ctx, organization, "admin")
+		organization1 := &models.Organization{
+			Name: "Concurrent Corp",
+		}
+		_, err := suite.orgService.CreateOrganization(suite.ctx, organization1, "admin")
 		assert.NoError(suite.T(), err)
 		done <- true
 	}()
 
 	go func() {
-		_, err := suite.orgService.CreateOrganization(suite.ctx, organization, "admin")
+		organization2 := &models.Organization{
+			Name: "Concurrent Corp",
+		}
+		_, err := suite.orgService.CreateOrganization(suite.ctx, organization2, "admin")
 		assert.NoError(suite.T(), err)
 		done <- true
 	}()
